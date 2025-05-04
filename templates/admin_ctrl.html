@@ -1,10 +1,156 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>管理员管理</title>
-</head>
-<body>
-    <h1>Admin Control Panel</h1>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="container-fluid">
+        <h1 class="mb-4">管理员控制中心</h1>
+        
+        <!-- 系统状态卡片 -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-user-shield me-2"></i>管理员状态</h5>
+                        <p class="card-text">在线</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-users me-2"></i>操作员数量</h5>
+                        <p class="card-text">5人</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-cogs me-2"></i>系统配置</h5>
+                        <p class="card-text">已完成</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-warning">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-exclamation-triangle me-2"></i>待处理事项</h5>
+                        <p class="card-text">7个</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 管理员操作区域 -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-user-plus me-2"></i>用户管理
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>用户名</th>
+                                    <th>角色</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>admin</td>
+                                    <td>管理员</td>
+                                    <td>在线</td>
+                                    <td><button class="btn btn-sm btn-primary">编辑</button></td>
+                                </tr>
+                                <tr>
+                                    <td>operator1</td>
+                                    <td>操作员</td>
+                                    <td>离线</td>
+                                    <td><button class="btn btn-sm btn-primary">编辑</button></td>
+                                </tr>
+                                <tr>
+                                    <td>operator2</td>
+                                    <td>操作员</td>
+                                    <td>在线</td>
+                                    <td><button class="btn btn-sm btn-primary">编辑</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <button class="btn btn-success">添加用户</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-cog me-2"></i>系统设置
+                    </div>
+                    <div class="card-body">
+                        <form>
+                            <div class="mb-3">
+                                <label for="systemName" class="form-label">系统名称</label>
+                                <input type="text" class="form-control" id="systemName" value="智慧海洋牧场可视化系统">
+                            </div>
+                            <div class="mb-3">
+                                <label for="refreshInterval" class="form-label">数据刷新间隔（秒）</label>
+                                <input type="number" class="form-control" id="refreshInterval" value="30">
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="enableAlerts" checked>
+                                <label class="form-check-label" for="enableAlerts">启用告警通知</label>
+                            </div>
+                            <button type="submit" class="btn btn-primary">保存设置</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 系统日志 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-history me-2"></i>系统日志
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>时间</th>
+                                        <th>用户</th>
+                                        <th>操作</th>
+                                        <th>详情</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>2025-05-04 10:23:45</td>
+                                        <td>admin</td>
+                                        <td>登录系统</td>
+                                        <td>IP: 192.168.1.100</td>
+                                    </tr>
+                                    <tr>
+                                        <td>2025-05-04 10:25:12</td>
+                                        <td>admin</td>
+                                        <td>修改系统设置</td>
+                                        <td>更新了数据刷新间隔</td>
+                                    </tr>
+                                    <tr>
+                                        <td>2025-05-04 11:05:33</td>
+                                        <td>operator2</td>
+                                        <td>查看告警信息</td>
+                                        <td>查看了摄像头3号信号弱告警</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
