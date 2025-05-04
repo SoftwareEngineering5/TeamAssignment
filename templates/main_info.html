@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="container-fluid">
+        <h1 class="mb-4">智慧海洋牧场可视化系统</h1>
+
+        <!-- 系统概览卡片 -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-globe me-2"></i>海域面积</h5>
+                        <p class="card-text">500平方公里</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-fish me-2"></i>养殖种类</h5>
+                        <p class="card-text">10种</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-water me-2"></i>水质状况</h5>
+                        <p class="card-text">良好</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-warning">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-exclamation-triangle me-2"></i>告警数量</h5>
+                        <p class="card-text">3个</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系统告警信息 -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-bell me-2"></i>系统告警信息
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <strong>警告：</strong> 摄像头3号信号弱，请检查连接。
+                        </div>
+                        <div class="alert alert-danger">
+                            <strong>严重：</strong> 水质传感器5号读数异常，请立即处理。
+                        </div>
+                        <div class="alert alert-info">
+                            <strong>提示：</strong> 养殖区域1号饲料不足，请及时补充。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 实时视频监控 -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-video me-2"></i>实时视频监控
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-dark text-white">
+                                        摄像头 1
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <video width="100%" height="auto" controls autoplay muted loop>
+                                            <source src="{{ url_for('static', filename='videos/珊瑚鱼群.mp4') }}" type="video/mp4">
+                                            您的浏览器不支持视频标签。
+                                        </video>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-dark text-white">
+                                        摄像头 2
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <video width="100%" height="auto" controls autoplay muted loop>
+                                            <source src="{{ url_for('static', filename='videos/海底风光.mp4') }}" type="video/mp4">
+                                            您的浏览器不支持视频标签。
+                                        </video>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
