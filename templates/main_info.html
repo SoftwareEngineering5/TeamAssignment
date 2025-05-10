@@ -1,98 +1,133 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <div class="container-fluid">
-        <h1 class="mb-4">智慧海洋牧场可视化系统</h1>
+<div class="container-fluid">
+    <h1 class="mb-4">智慧海洋牧场可视化系统 - <span id="ranchNameTitle">请选择海洋牧场</span></h1>
 
-        <!-- 系统概览卡片 -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="card text-white bg-primary">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="fas fa-globe me-2"></i>海域面积</h5>
-                        <p class="card-text">500平方公里</p>
-                    </div>
+    <!-- 系统概览卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-globe me-2"></i>海域面积</h5>
+                    <p class="card-text" id="seaArea">-</p>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-info">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="fas fa-fish me-2"></i>养殖种类</h5>
-                        <p class="card-text">10种</p>
-                    </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-fish me-2"></i>养殖种类</h5>
+                    <p class="card-text" id="speciesCount">-</p>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-success">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="fas fa-water me-2"></i>水质状况</h5>
-                        <p class="card-text">良好</p>
-                    </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-water me-2"></i>水质天气</h5>
+                    <p class="card-text" id="waterQuality">-</p>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card text-white bg-warning">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="fas fa-exclamation-triangle me-2"></i>告警数量</h5>
-                        <p class="card-text">3个</p>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-exclamation-triangle me-2"></i>告警数量</h5>
+                    <p class="card-text" id="alertCount">-</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 水域详细介绍 -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-map-marked-alt me-2"></i>水域介绍
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>基本信息</h5>
+                            <ul class="list-unstyled">
+                                <li><strong>位置：</strong><span id="location">-</span></li>
+                                <li><strong>水深：</strong><span id="waterDepth">-</span></li>
+                                <li><strong>海流情况：</strong><span id="currentStatus">-</span></li>
+                                <li><strong>建设时间：</strong><span id="establishTime">-</span></li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>特色介绍</h5>
+                            <p id="introduction">-</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- 系统告警信息 -->
-        <div class="row mt-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <i class="fas fa-bell me-2"></i>系统告警信息
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-warning">
-                            <strong>警告：</strong> 摄像头3号信号弱，请检查连接。
-                        </div>
-                        <div class="alert alert-danger">
-                            <strong>严重：</strong> 水质传感器5号读数异常，请立即处理。
-                        </div>
-                        <div class="alert alert-info">
-                            <strong>提示：</strong> 养殖区域1号饲料不足，请及时补充。
-                        </div>
+    <!-- 养殖种类详情 -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-fish me-2"></i>养殖种类详情
+                </div>
+                <div class="card-body">
+                    <div id="speciesList" class="row">
+                        <!-- 动态生成的养殖种类卡片 -->
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- 实时视频监控 -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <i class="fas fa-video me-2"></i>实时视频监控
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card mb-3">
-                                    <div class="card-header bg-dark text-white">
-                                        摄像头 1
-                                    </div>
-                                    <div class="card-body p-0">
-                                        <video width="100%" height="auto" controls autoplay muted loop>
-                                            <source src="{{ url_for('static', filename='videos/珊瑚鱼群.mp4') }}" type="video/mp4">
-                                            您的浏览器不支持视频标签。
-                                        </video>
-                                    </div>
+    <!-- 系统告警信息 -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-bell me-2"></i>系统告警信息
+                </div>
+                <div class="card-body" id="alertsContainer">
+                    <!-- 动态生成的告警信息 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 实时视频监控 -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-video me-2"></i>实时视频监控
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-dark text-white">
+                                    摄像头 1
+                                </div>
+                                <div class="card-body p-0">
+                                    <video width="100%" height="auto" controls autoplay muted loop>
+                                        <source src="{{ url_for('static', filename='videos/珊瑚鱼群.mp4') }}" type="video/mp4">
+                                        您的浏览器不支持视频标签。
+                                    </video>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="card mb-3">
-                                    <div class="card-header bg-dark text-white">
-                                        摄像头 2
-                                    </div>
-                                    <div class="card-body p-0">
-                                        <video width="100%" height="auto" controls autoplay muted loop>
-                                            <source src="{{ url_for('static', filename='videos/海底风光.mp4') }}" type="video/mp4">
-                                            您的浏览器不支持视频标签。
-                                        </video>
-                                    </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-dark text-white">
+                                    摄像头 2
+                                </div>
+                                <div class="card-body p-0">
+                                    <video width="100%" height="auto" controls autoplay muted loop>
+                                        <source src="{{ url_for('static', filename='videos/海底风光.mp4') }}" type="video/mp4">
+                                        您的浏览器不支持视频标签。
+                                    </video>
                                 </div>
                             </div>
                         </div>
@@ -101,4 +136,583 @@
             </div>
         </div>
     </div>
+</div>
+
+<script>
+/*
+    * 海洋牧场数据
+*/
+
+    // 各海洋牧场的详细数据
+    const marineRanchData = {
+        0: { // 山东青岛
+            name: '青岛国家级海洋牧场示范区',
+            seaArea: '850平方公里',
+            speciesCount: '12种',
+            waterQuality: '优秀',
+            alertCount: '2个',
+            location: '青岛市黄岛区东海岸',
+            waterDepth: '15-45米',
+            currentStatus: '海流稳定，适宜养殖',
+            establishTime: '2018年6月',
+            introduction: '青岛海洋牧场是国家首批认定的海洋牧场示范区，拥有先进的智能化管理系统和完善的生态养殖体系。该区域海水清澈，生态环境优良，是多种海洋生物的理想栖息地。',
+            species: [
+                { name: '海参', quantity: '200万头', status: '生长良好' },
+                { name: '鲍鱼', quantity: '150万只', status: '正常' },
+                { name: '扇贝', quantity: '500万只', status: '丰收期' },
+                { name: '海胆', quantity: '80万只', status: '生长中' }
+            ],
+            alerts: [
+                { level: 'warning', type: '设备异常', message: '3号浮标信号弱，请检查电池。' },
+                { level: 'info', type: '天气异常', message: '明日有小到中雨，请做好防护准备。' }
+            ]
+        },
+        1: { // 浙江舟山
+            name: '舟山群岛海洋牧场',
+            seaArea: '620平方公里',
+            speciesCount: '15种',
+            waterQuality: '良好',
+            alertCount: '3个',
+            location: '舟山市普陀区东海海域',
+            waterDepth: '20-60米',
+            currentStatus: '海流活跃，营养丰富',
+            establishTime: '2019年3月',
+            introduction: '舟山海洋牧场位于东海渔场核心区域，是我国重要的海洋渔业基地。该牧场充分利用舟山群岛独特的地理优势，发展深水养殖和生态旅游。',
+            species: [
+                { name: '黄鱼', quantity: '300万尾', status: '生长良好' },
+                { name: '带鱼', quantity: '180万尾', status: '正常' },
+                { name: '石斑鱼', quantity: '50万尾', status: '培育期' },
+                { name: '梭子蟹', quantity: '120万只', status: '收获期' },
+                { name: '大黄鱼', quantity: '200万尾', status: '生长中' }
+            ],
+            alerts: []
+        },
+        2: { // 福建厦门
+            name: '厦门湾海洋牧场',
+            seaArea: '380平方公里',
+            speciesCount: '10种',
+            waterQuality: '良好',
+            alertCount: '1个',
+            location: '厦门市翔安区海域',
+            waterDepth: '10-35米',
+            currentStatus: '水温适宜，海流平稳',
+            establishTime: '2020年1月',
+            introduction: '厦门湾海洋牧场结合了传统养殖与现代科技，打造了集养殖、科研、观光于一体的综合性海洋牧场。',
+            species: [
+                { name: '石斑鱼', quantity: '100万尾', status: '生长良好' },
+                { name: '鲈鱼', quantity: '150万尾', status: '正常' },
+                { name: '牡蛎', quantity: '800万只', status: '收获期' },
+                { name: '青蟹', quantity: '60万只', status: '培育中' }
+            ],
+            alerts: []
+        },
+        3: { // 广东湛江
+            name: '湛江海洋牧场',
+            seaArea: '450平方公里',
+            speciesCount: '8种',
+            waterQuality: '优秀',
+            alertCount: '0个',
+            location: '湛江市徐闻县海域',
+            waterDepth: '15-40米',
+            currentStatus: '热带海域，水温恒定',
+            establishTime: '2019年9月',
+            introduction: '湛江海洋牧场位于中国大陆最南端，拥有得天独厚的热带海洋资源，适合多种热带鱼类养殖。',
+            species: [
+                { name: '金鲳鱼', quantity: '250万尾', status: '生长良好' },
+                { name: '军曹鱼', quantity: '180万尾', status: '正常' },
+                { name: '珍珠贝', quantity: '500万只', status: '培育期' },
+                { name: '龙虾', quantity: '30万只', status: '生长中' }
+            ],
+            alerts: []
+        },
+        4: { // 辽宁大连
+            name: '大连海洋牧场',
+            seaArea: '720平方公里',
+            speciesCount: '14种',
+            waterQuality: '良好',
+            alertCount: '4个',
+            location: '大连市长海县海域',
+            waterDepth: '20-55米',
+            currentStatus: '冷水性海域，适合冷水鱼类',
+            establishTime: '2017年5月',
+            introduction: '大连海洋牧场是北方重要的海洋养殖基地，专注于冷水性经济鱼类和海珍品的养殖，拥有完善的冷链物流体系。',
+            species: [
+                { name: '海参', quantity: '300万头', status: '生长良好' },
+                { name: '鲍鱼', quantity: '200万只', status: '正常' },
+                { name: '海胆', quantity: '150万只', status: '收获期' },
+                { name: '扇贝', quantity: '600万只', status: '培育中' },
+                { name: '海螺', quantity: '100万只', status: '生长中' }
+            ],
+            alerts: []
+        },
+        5: { // 河北秦皇岛
+            name: '秦皇岛海洋牧场',
+            seaArea: '320平方公里',
+            speciesCount: '9种',
+            waterQuality: '良好',
+            alertCount: '2个',
+            location: '秦皇岛市北戴河新区海域',
+            waterDepth: '10-30米',
+            currentStatus: '渤海湾内，风浪较小',
+            establishTime: '2020年7月',
+            introduction: '秦皇岛海洋牧场位于渤海湾内，环境相对封闭，适合发展休闲渔业和生态旅游，是京津冀地区重要的海产品供应基地。',
+            species: [
+                { name: '对虾', quantity: '400万尾', status: '生长良好' },
+                { name: '梭子蟹', quantity: '180万只', status: '正常' },
+                { name: '贝类', quantity: '600万只', status: '丰收期' },
+                { name: '海蜇', quantity: '50万只', status: '培育中' }
+            ],
+            alerts: []
+        }
+    };
+
+/*
+    * 报警处理
+*/
+
+    // CSV文件操作
+    const csvOperations = {
+        // 从CSV文件加载警报
+        loadAlertsFromCSV: async function(ranchName) {
+            try {
+                // 调用API获取警报数据
+                const response = await fetch(`/api/alerts/${encodeURIComponent(ranchName)}`);
+                if (!response.ok) {
+                    console.error('加载警报数据失败:', response.statusText);
+                    return [];
+                }
+                
+                const alerts = await response.json();
+                return alerts;
+            } catch (error) {
+                console.error('加载警报数据时出错:', error);
+                return [];
+            }
+        },
+        
+        // 更新警报到CSV文件
+        updateAlertsInCSV: async function(ranchName, newAlerts) {
+            try {
+                // 调用API更新警报数据
+                const response = await fetch(`/api/alerts/${encodeURIComponent(ranchName)}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(newAlerts)
+                });
+                
+                if (!response.ok) {
+                    console.error('更新警报数据失败:', response.statusText);
+                    return [];
+                }
+                
+                const updatedAlerts = await response.json();
+                return updatedAlerts;
+            } catch (error) {
+                console.error('更新警报数据时出错:', error);
+                return [];
+            }
+        },
+        
+        // 删除特定警报
+        deleteAlert: async function(ranchName, alertIndex) {
+            try {
+                // 调用API删除警报
+                const response = await fetch(`/api/alerts/${encodeURIComponent(ranchName)}/${alertIndex}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) {
+                    console.error('删除警报失败:', response.statusText);
+                    return null;
+                }
+                
+                const result = await response.json();
+                return result.alerts;
+            } catch (error) {
+                console.error('删除警报时出错:', error);
+                return null;
+            }
+        },
+        
+        // 初始化所有牧场的警报文件
+        initAlertsFiles: async function(ranchNames) {
+            try {
+                // 调用API初始化警报文件
+                const response = await fetch('/api/init_alerts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ ranch_names: ranchNames })
+                });
+                
+                if (!response.ok) {
+                    console.error('初始化警报文件失败:', response.statusText);
+                    return false;
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('初始化警报文件时出错:', error);
+                return false;
+            }
+        }
+    };
+
+    // 删除警报的处理函数
+    async function deleteAlertHandler(ranchName, alertIndex) {
+        // 确认删除
+        if (confirm('确定要删除此警报吗？')) {
+            // 调用API删除警报
+            const updatedAlerts = await csvOperations.deleteAlert(ranchName, alertIndex);
+            
+            if (updatedAlerts) {
+                // 更新当前显示
+                const currentIndex = document.getElementById('marineFarmSelect').value;
+                if (currentIndex !== '') {
+                    await updateRanchContent(currentIndex);
+                }
+            }
+        }
+    }
+
+/*
+    * 天气警报处理
+*/
+
+    // 全局天气数据存储
+    let globalWeatherData = {};
+
+    // 天气异常检测规则
+    const weatherAlertRules = {
+        // 极端天气条件
+        extremeWeather: {
+            codes: [95, 96, 99], // 雷暴及雷暴伴有冰雹
+            level: 'danger',
+            type: '极端天气',
+            getMessage: (data) => `当前出现${data.weather}，请立即采取防护措施！`
+        },
+        // 强降水
+        heavyRain: {
+            codes: [65, 67, 75, 77, 82, 86], // 大雨、强冻雨、大雪、雪粒、大阵雨、大阵雪
+            level: 'danger',
+            type: '强降水',
+            getMessage: (data) => `${data.weather}警告，可能影响海上作业安全。`
+        },
+        // 中等降水
+        moderateRain: {
+            codes: [53, 55, 63, 73, 81], // 中度毛毛雨、浓毛毛雨、中雨、中雪、中阵雨
+            level: 'warning',
+            type: '中等降水',
+            getMessage: (data) => `${data.weather}持续中，请做好防护准备。`
+        },
+        // 大风
+        strongWind: {
+            threshold: 40, // 风速超过40km/h
+            level: 'warning',
+            type: '大风',
+            getMessage: (data) => `风速达到${data.wind.toFixed(1)}km/h，请注意海上作业安全。`
+        },
+        // 低能见度
+        lowVisibility: {
+            codes: [45, 48, 56, 57], // 有雾、沉积雾凇、冻毛毛雨、强冻毛毛雨
+            level: 'warning',
+            type: '能见度',
+            getMessage: (data) => `出现${data.weather}，能见度降低，请注意航行安全。`
+        },
+        // 降雪条件
+        snowCondition: {
+            codes: [71, 73, 75, 77, 85, 86], // 各类降雪
+            level: 'warning',
+            type: '降雪',
+            getMessage: (data) => `${data.weather}可能导致路面结冰，请注意安全。`
+        },
+        // 温度异常
+        temperatureAnomaly: {
+            highTemp: 35,
+            lowTemp: -5,
+            level: 'info',
+            type: '温度异常',
+            getMessage: (data) => {
+                if (data.temp > 35) {
+                    return `高温预警：当前温度${data.temp}°C，请注意防暑降温。`;
+                } else if (data.temp < -5) {
+                    return `低温预警：当前温度${data.temp}°C，请注意防寒保暖。`;
+                }
+                return null;
+            }
+        }
+    };
+
+    // 检测天气异常
+    function detectWeatherAnomalies(weatherData) {
+        const alerts = [];
+        
+        // 检查极端天气
+        if (weatherAlertRules.extremeWeather.codes.includes(weatherData.weatherCode)) {
+            alerts.push({
+                level: weatherAlertRules.extremeWeather.level,
+                type: weatherAlertRules.extremeWeather.type,
+                message: weatherAlertRules.extremeWeather.getMessage(weatherData),
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        // 检查强降水
+        if (weatherAlertRules.heavyRain.codes.includes(weatherData.weatherCode)) {
+            alerts.push({
+                level: weatherAlertRules.heavyRain.level,
+                type: weatherAlertRules.heavyRain.type,
+                message: weatherAlertRules.heavyRain.getMessage(weatherData),
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        // 检查大风
+        if (weatherData.wind > weatherAlertRules.strongWind.threshold) {
+            alerts.push({
+                level: weatherAlertRules.strongWind.level,
+                type: weatherAlertRules.strongWind.type,
+                message: weatherAlertRules.strongWind.getMessage(weatherData),
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        // 检查能见度
+        if (weatherAlertRules.lowVisibility.codes.includes(weatherData.weatherCode)) {
+            alerts.push({
+                level: weatherAlertRules.lowVisibility.level,
+                type: weatherAlertRules.lowVisibility.type,
+                message: weatherAlertRules.lowVisibility.getMessage(weatherData),
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        // 检查温度异常
+        if (weatherData.temp > weatherAlertRules.temperatureAnomaly.highTemp || 
+            weatherData.temp < weatherAlertRules.temperatureAnomaly.lowTemp) {
+            alerts.push({
+                level: weatherAlertRules.temperatureAnomaly.level,
+                type: weatherAlertRules.temperatureAnomaly.type,
+                message: weatherAlertRules.temperatureAnomaly.getMessage(weatherData),
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        return alerts;
+    }
+
+    // 更新天气警报
+    async function updateWeatherAlerts(selectedRanchIndex) {
+        const weatherData = Object.values(globalWeatherData);
+        
+        if (selectedRanchIndex !== null && selectedRanchIndex !== '') {
+            const selectedRanch = marineRanches[selectedRanchIndex];
+            const ranchWeather = weatherData.find(w => w.name === selectedRanch.name);
+            
+            if (ranchWeather) {
+                // 检测天气异常
+                const weatherAlerts = detectWeatherAnomalies(ranchWeather);
+                
+                // 将天气警报更新到CSV文件
+                const allAlerts = await csvOperations.updateAlertsInCSV(selectedRanch.name, weatherAlerts);
+                
+                // 更新警报数量
+                document.getElementById('alertCount').textContent = `${allAlerts.length}个`;
+                
+                // 更新警报显示
+                const alertsContainer = document.getElementById('alertsContainer');
+                alertsContainer.innerHTML = '';
+                if (allAlerts.length === 0) {
+                    alertsContainer.innerHTML = '<div class="alert alert-success">当前无告警信息，系统运行正常。</div>';
+                } else {
+                    allAlerts.forEach((alert, index) => {
+                        const alertDiv = `
+                            <div class="alert alert-${alert.level}">
+                                <strong>${alert.type}：</strong> ${alert.message}
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">${new Date(alert.timestamp).toLocaleString()}</small>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteAlertHandler('${selectedRanch.name}', ${index})">
+                                        <i class="fas fa-times"></i> 删除
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        alertsContainer.innerHTML += alertDiv;
+                    });
+                }
+                
+                // 更新天气信息显示
+                const waterQualityElement = document.getElementById('waterQuality');
+                waterQualityElement.innerHTML = `${waterQualityElement.textContent} | ${ranchWeather.weatherIcon} ${ranchWeather.weather} ${ranchWeather.temp}°C`;
+            }
+        }
+    }
+
+    // 初始化天气监测
+    async function initWeatherMonitoring() {
+        try {
+            // 获取初始天气数据
+            const weatherData = await fetchMarineRanchWeatherData(marineRanches);
+            
+            // 存储到全局变量
+            weatherData.forEach(data => {
+                globalWeatherData[data.name] = data;
+            });
+            
+            // 如果有选中的牧场，立即更新警报
+            const selectedIndex = localStorage.getItem('selectedMarineFarm');
+            if (selectedIndex !== null && selectedIndex !== '') {
+                await updateWeatherAlerts(selectedIndex);
+            }
+            
+            // 定期更新天气数据（每10分钟）
+            setInterval(async () => {
+                const newWeatherData = await fetchMarineRanchWeatherData(marineRanches);
+                newWeatherData.forEach(data => {
+                    globalWeatherData[data.name] = data;
+                });
+                
+                // 更新当前选中牧场的警报
+                const currentIndex = document.getElementById('marineFarmSelect').value;
+                if (currentIndex !== '') {
+                    await updateWeatherAlerts(currentIndex);
+                }
+            }, 600000); // 10分钟
+            
+        } catch (error) {
+            console.error('初始化天气监测失败:', error);
+        }
+    }
+
+/*
+    * 页面内容的更新与初始化
+*/
+
+    // 更新页面内容的函数
+    async function updateRanchContent(ranchIndex) {
+        if (ranchIndex === "" || ranchIndex === null) {
+            // 清空内容
+            document.getElementById('ranchNameTitle').textContent = '请选择海洋牧场';
+            document.getElementById('seaArea').textContent = '-';
+            document.getElementById('speciesCount').textContent = '-';
+            document.getElementById('waterQuality').textContent = '-';
+            document.getElementById('alertCount').textContent = '-';
+            document.getElementById('location').textContent = '-';
+            document.getElementById('waterDepth').textContent = '-';
+            document.getElementById('currentStatus').textContent = '-';
+            document.getElementById('establishTime').textContent = '-';
+            document.getElementById('introduction').textContent = '-';
+            document.getElementById('speciesList').innerHTML = '';
+            document.getElementById('alertsContainer').innerHTML = '<p class="text-muted">请选择海洋牧场查看告警信息</p>';
+            return;
+        }
+
+        const data = marineRanchData[ranchIndex];
+        
+        // 更新基本信息
+        document.getElementById('ranchNameTitle').textContent = data.name;
+        document.getElementById('seaArea').textContent = data.seaArea;
+        document.getElementById('speciesCount').textContent = data.speciesCount;
+        document.getElementById('waterQuality').textContent = data.waterQuality;
+        
+        // 更新水域介绍
+        document.getElementById('location').textContent = data.location;
+        document.getElementById('waterDepth').textContent = data.waterDepth;
+        document.getElementById('currentStatus').textContent = data.currentStatus;
+        document.getElementById('establishTime').textContent = data.establishTime;
+        document.getElementById('introduction').textContent = data.introduction;
+        
+        // 更新养殖种类
+        const speciesList = document.getElementById('speciesList');
+        speciesList.innerHTML = '';
+        data.species.forEach(species => {
+            const speciesCard = `
+                <div class="col-md-3 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">${species.name}</h6>
+                            <p class="card-text mb-1"><small>数量：${species.quantity}</small></p>
+                            <p class="card-text mb-0"><small>状态：<span class="text-success">${species.status}</span></small></p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            speciesList.innerHTML += speciesCard;
+        });
+        
+        // 从CSV文件加载警报数据
+        const selectedRanch = marineRanches[ranchIndex];
+        const alerts = await csvOperations.loadAlertsFromCSV(selectedRanch.name);
+        
+        // 更新警报数量
+        document.getElementById('alertCount').textContent = `${alerts.length}个`;
+        
+        // 更新告警信息
+        const alertsContainer = document.getElementById('alertsContainer');
+        alertsContainer.innerHTML = '';
+        if (alerts.length === 0) {
+            alertsContainer.innerHTML = '<div class="alert alert-success">当前无告警信息，系统运行正常。</div>';
+        } else {
+            alerts.forEach((alert, index) => {
+                const alertDiv = `
+                    <div class="alert alert-${alert.level}">
+                        <strong>${alert.type}：</strong> ${alert.message}
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">${new Date(alert.timestamp).toLocaleString()}</small>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteAlertHandler('${selectedRanch.name}', ${index})">
+                                <i class="fas fa-times"></i> 删除
+                            </button>
+                        </div>
+                    </div>
+                `;
+                alertsContainer.innerHTML += alertDiv;
+            });
+        }
+    }
+
+    // 在页面加载完成后初始化监测
+    document.addEventListener('DOMContentLoaded', async function() {
+        // 初始化警报文件
+        const ranchNames = marineRanches.map(ranch => ranch.name);
+        await csvOperations.initAlertsFiles(ranchNames);
+        
+        const savedIndex = localStorage.getItem('selectedMarineFarm');
+        if (savedIndex !== null && savedIndex !== '') {
+            await updateRanchContent(savedIndex);
+        }
+        
+        // 初始化天气监测
+        await initWeatherMonitoring();
+        // 可补充：初始化其他监测（水质数据、鱼群数据、设备）
+    });
+
+
+    // 监听海洋牧场选择变化
+    window.addEventListener('marineFarmChanged', function(e) {
+        const selectedIndex = document.getElementById('marineFarmSelect').value;
+        updateRanchContent(selectedIndex);
+    });
+</script>
+
+<script>
+    // 在window全局对象上注册删除警报的处理函数
+    window.deleteAlertHandler = async function(ranchName, alertIndex) {
+        // 确认删除
+        if (confirm('确定要删除此警报吗？')) {
+            // 调用API删除警报
+            const updatedAlerts = await csvOperations.deleteAlert(ranchName, alertIndex);
+            
+            if (updatedAlerts) {
+                // 更新当前显示
+                const currentIndex = document.getElementById('marineFarmSelect').value;
+                if (currentIndex !== '') {
+                    await updateRanchContent(currentIndex);
+                }
+            }
+        }
+    };
+</script>
 {% endblock %}
