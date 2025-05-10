@@ -378,6 +378,159 @@
         }
     }
 
+    // 弹窗警报系统
+    const alertPopupSystem = {
+        // 存储已经显示过的警报ID，防止重复弹窗
+        shownAlerts: new Set(),
+        
+        // 根据警报级别显示不同样式的弹窗
+        showAlertPopup(alert) {
+            // 创建警报的唯一ID，基于类型和时间戳
+            const alertId = `${alert.type}-${alert.timestamp}`;
+            
+            // 如果这个警报已经显示过，则不再显示
+            if (this.shownAlerts.has(alertId)) {
+                return;
+            }
+            
+            // 将这个警报ID添加到已显示集合中
+            this.shownAlerts.add(alertId);
+            
+            // 根据警报级别设置弹窗样式和行为
+            let popupOptions = {};
+            switch(alert.level) {
+                case 'danger':
+                    popupOptions = {
+                        icon: 'error',
+                        title: `严重警报：${alert.type}`,
+                        text: alert.message,
+                        confirmButtonText: '我已了解',
+                        confirmButtonColor: '#dc3545',
+                        timer: 0, // 不自动关闭
+                        backdrop: `rgba(220, 53, 69, 0.4)`,
+                    };
+                    break;
+                case 'warning':
+                    popupOptions = {
+                        icon: 'warning',
+                        title: `警告：${alert.type}`,
+                        text: alert.message,
+                        confirmButtonText: '确认',
+                        confirmButtonColor: '#ffc107',
+                        timer: 120000, // 120秒后自动关闭
+                        timerProgressBar: true,
+                        backdrop: `rgba(255, 193, 7, 0.4)`,
+                    };
+                    break;
+                case 'info':
+                default:
+                    popupOptions = {
+                        icon: 'info',
+                        title: `提示：${alert.type}`,
+                        text: alert.message,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 60000, // 60秒后自动关闭
+                        timerProgressBar: true,
+                    };
+                    break;
+            }
+            
+            // 创建一个简易的自定义弹窗
+            this.showCustomPopup(popupOptions);
+                
+            // 同时在控制台记录警报信息
+            console.warn(`警报: ${popupOptions.title} - ${popupOptions.text}`);
+    
+            // 对于危险级别的警报，还可以添加声音提示
+            if (alert.level === 'danger') {
+                this.playAlertSound();
+            }
+        },
+        
+        // 播放警报声音
+        playAlertSound() {
+            try {
+                const audio = new Audio('/assets/sounds/alert.mp3');
+                audio.play();
+            } catch (e) {
+                console.error('无法播放警报声音:', e);
+            }
+        },
+        
+        // 清除已显示的警报记录（例如当用户切换到新的牧场时）
+        clearShownAlerts() {
+            this.shownAlerts.clear();
+        },
+        
+        // 创建一个简易的自定义弹窗（当SweetAlert2不可用时）
+        showCustomPopup(options) {
+            try {
+                // 创建弹窗元素
+                const popup = document.createElement('div');
+                popup.style.position = 'fixed';
+                popup.style.zIndex = '9999';
+                popup.style.top = '20px';
+                popup.style.right = '20px';
+                popup.style.padding = '15px 20px';
+                popup.style.borderRadius = '5px';
+                popup.style.boxShadow = '0 3px 10px rgba(0,0,0,0.2)';
+                popup.style.minWidth = '280px';
+                popup.style.maxWidth = '450px';
+                
+                // 根据警报级别设置样式
+                if (options.icon === 'error') {
+                    popup.style.backgroundColor = '#f8d7da';
+                    popup.style.borderLeft = '5px solid #dc3545';
+                    popup.style.color = '#721c24';
+                } else if (options.icon === 'warning') {
+                    popup.style.backgroundColor = '#fff3cd';
+                    popup.style.borderLeft = '5px solid #ffc107';
+                    popup.style.color = '#856404';
+                } else {
+                    popup.style.backgroundColor = '#d1ecf1';
+                    popup.style.borderLeft = '5px solid #17a2b8';
+                    popup.style.color = '#0c5460';
+                }
+                
+                // 添加内容
+                popup.innerHTML = `
+                    <div style="margin-bottom: 10px; font-weight: bold; font-size: 16px;">
+                        ${options.title || '警报'}
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        ${options.text || ''}
+                    </div>
+                    <div style="text-align: right;">
+                        <button id="closePopup" style="padding: 5px 12px; background-color: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                            关闭
+                        </button>
+                    </div>
+                `;
+                
+                // 添加到DOM
+                document.body.appendChild(popup);
+                
+                // 添加关闭按钮功能
+                document.getElementById('closePopup').addEventListener('click', function() {
+                    document.body.removeChild(popup);
+                });
+                
+                // 如果设置了timer，添加自动关闭功能
+                if (options.timer) {
+                    setTimeout(() => {
+                        if (document.body.contains(popup)) {
+                            document.body.removeChild(popup);
+                        }
+                    }, options.timer);
+                }
+            } catch (e) {
+                console.error('创建自定义弹窗失败:', e);
+            }
+        }
+    };
+
 /*
     * 天气警报处理
 */
@@ -431,12 +584,12 @@
         },
         // 温度异常
         temperatureAnomaly: {
-            highTemp: 35,
+            highTemp: 35, // 若要验证警报功能，可以降低highTemp（比如15）
             lowTemp: -5,
             level: 'info',
             type: '温度异常',
             getMessage: (data) => {
-                if (data.temp > 35) {
+                if (data.temp > 35) { // 验证警报功能，这里也要进行相应修改
                     return `高温预警：当前温度${data.temp}°C，请注意防暑降温。`;
                 } else if (data.temp < -5) {
                     return `低温预警：当前温度${data.temp}°C，请注意防寒保暖。`;
@@ -455,7 +608,11 @@
             alerts.push({
                 level: weatherAlertRules.extremeWeather.level,
                 type: weatherAlertRules.extremeWeather.type,
-                message: weatherAlertRules.extremeWeather.getMessage(weatherData),
+                message: weatherAlertRules.extremeWeather.getMessage({
+                    weather: weatherData.weather,
+                    temp: weatherData.temp,
+                    wind: weatherData.wind
+                }),
                 timestamp: new Date().toISOString()
             });
         }
@@ -465,7 +622,39 @@
             alerts.push({
                 level: weatherAlertRules.heavyRain.level,
                 type: weatherAlertRules.heavyRain.type,
-                message: weatherAlertRules.heavyRain.getMessage(weatherData),
+                message: weatherAlertRules.heavyRain.getMessage({
+                    weather: weatherData.weather,
+                    temp: weatherData.temp,
+                    wind: weatherData.wind
+                }),
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        // 检查中等降水
+        if (weatherAlertRules.moderateRain.codes.includes(weatherData.weatherCode)) {
+            alerts.push({
+                level: weatherAlertRules.moderateRain.level,
+                type: weatherAlertRules.moderateRain.type,
+                message: weatherAlertRules.moderateRain.getMessage({
+                    weather: weatherData.weather,
+                    temp: weatherData.temp,
+                    wind: weatherData.wind
+                }),
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        // 检查降雪条件
+        if (weatherAlertRules.snowCondition.codes.includes(weatherData.weatherCode)) {
+            alerts.push({
+                level: weatherAlertRules.snowCondition.level,
+                type: weatherAlertRules.snowCondition.type,
+                message: weatherAlertRules.snowCondition.getMessage({
+                    weather: weatherData.weather,
+                    temp: weatherData.temp,
+                    wind: weatherData.wind
+                }),
                 timestamp: new Date().toISOString()
             });
         }
@@ -475,7 +664,11 @@
             alerts.push({
                 level: weatherAlertRules.strongWind.level,
                 type: weatherAlertRules.strongWind.type,
-                message: weatherAlertRules.strongWind.getMessage(weatherData),
+                message: weatherAlertRules.strongWind.getMessage({
+                    weather: weatherData.weather,
+                    temp: weatherData.temp,
+                    wind: weatherData.wind
+                }),
                 timestamp: new Date().toISOString()
             });
         }
@@ -485,7 +678,11 @@
             alerts.push({
                 level: weatherAlertRules.lowVisibility.level,
                 type: weatherAlertRules.lowVisibility.type,
-                message: weatherAlertRules.lowVisibility.getMessage(weatherData),
+                message: weatherAlertRules.lowVisibility.getMessage({
+                    weather: weatherData.weather,
+                    temp: weatherData.temp,
+                    wind: weatherData.wind
+                }),
                 timestamp: new Date().toISOString()
             });
         }
@@ -493,12 +690,20 @@
         // 检查温度异常
         if (weatherData.temp > weatherAlertRules.temperatureAnomaly.highTemp || 
             weatherData.temp < weatherAlertRules.temperatureAnomaly.lowTemp) {
-            alerts.push({
-                level: weatherAlertRules.temperatureAnomaly.level,
-                type: weatherAlertRules.temperatureAnomaly.type,
-                message: weatherAlertRules.temperatureAnomaly.getMessage(weatherData),
-                timestamp: new Date().toISOString()
+            const tempMessage = weatherAlertRules.temperatureAnomaly.getMessage({
+                weather: weatherData.weather,
+                temp: weatherData.temp,
+                wind: weatherData.wind
             });
+            
+            if (tempMessage) {
+                alerts.push({
+                    level: weatherAlertRules.temperatureAnomaly.level,
+                    type: weatherAlertRules.temperatureAnomaly.type,
+                    message: tempMessage,
+                    timestamp: new Date().toISOString()
+                });
+            }
         }
         
         return alerts;
@@ -516,8 +721,31 @@
                 // 检测天气异常
                 const weatherAlerts = detectWeatherAnomalies(ranchWeather);
                 
+                // 获取上一次的警报
+                let previousAlerts = [];
+                try {
+                    previousAlerts = await csvOperations.loadAlertsFromCSV(selectedRanch.name);
+                } catch (error) {
+                    console.error("获取历史警报失败:", error);
+                }
+                
                 // 将天气警报更新到CSV文件
                 const allAlerts = await csvOperations.updateAlertsInCSV(selectedRanch.name, weatherAlerts);
+                
+                // 识别新的警报（当前检测到但不在历史记录中的警报）
+                const newAlerts = weatherAlerts.filter(alert => {
+                    // 检查历史记录中是否已有同类型的警报
+                    return !previousAlerts.some(prevAlert => 
+                        prevAlert.type === alert.type && 
+                        prevAlert.level === alert.level && 
+                        prevAlert.message === alert.message
+                    );
+                });
+                
+                // 为新的警报显示弹窗
+                newAlerts.forEach(alert => {
+                    alertPopupSystem.showAlertPopup(alert);
+                });
                 
                 // 更新警报数量
                 document.getElementById('alertCount').textContent = `${allAlerts.length}个`;
@@ -693,6 +921,7 @@
     // 监听海洋牧场选择变化
     window.addEventListener('marineFarmChanged', function(e) {
         const selectedIndex = document.getElementById('marineFarmSelect').value;
+        alertPopupSystem.clearShownAlerts();
         updateRanchContent(selectedIndex);
     });
 </script>
