@@ -52,6 +52,7 @@ import os
 import csv
 import json
 from datetime import datetime
+from collections import defaultdict
 
 app = Flask(__name__)
 
@@ -265,6 +266,148 @@ def init_alerts():
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# 水质类别转数值（用于平均）
+WATER_QUALITY_LEVEL_MAP = {'Ⅰ': 1, 'Ⅱ': 2, 'Ⅲ': 3, 'Ⅳ': 4, 'Ⅴ': 5, '劣Ⅴ': 6}
+WATER_QUALITY_LEVEL_MAP_REVERSE = {v: k for k, v in WATER_QUALITY_LEVEL_MAP.items()}
+
+# 断面地理信息（如有可补充，否则返回空）
+SECTION_GEO = {}
+
+# 递归聚合水质数据
+@app.route('/api/water_quality/summary')
+def water_quality_summary():
+    base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'water_quality')
+    if not os.path.exists(base_dir):
+        base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'water_quality')
+    result = []
+    for province in os.listdir(base_dir):
+        province_path = os.path.join(base_dir, province)
+        if not os.path.isdir(province_path):
+            continue
+        province_data = {
+            'province': province,
+            'basins': [],
+            'avg_level': None,
+            'avg_metrics': {},
+        }
+        level_sum, level_count = 0, 0
+        metrics_sum = defaultdict(float)
+        metrics_count = defaultdict(int)
+        for basin in os.listdir(province_path):
+            basin_path = os.path.join(province_path, basin)
+            if not os.path.isdir(basin_path):
+                continue
+            basin_data = {
+                'basin': basin,
+                'sections': [],
+                'avg_level': None,
+                'avg_metrics': {},
+            }
+            basin_level_sum, basin_level_count = 0, 0
+            basin_metrics_sum = defaultdict(float)
+            basin_metrics_count = defaultdict(int)
+            for section in os.listdir(basin_path):
+                section_path = os.path.join(basin_path, section)
+                if not os.path.isdir(section_path):
+                    continue
+                # 只取2021-04下的csv
+                month_dir = os.path.join(section_path, '2021-04')
+                if not os.path.exists(month_dir):
+                    continue
+                csv_files = [f for f in os.listdir(month_dir) if f.endswith('.csv')]
+                for csv_file in csv_files:
+                    csv_path = os.path.join(month_dir, csv_file)
+                    with open(csv_path, encoding='utf-8') as f:
+                        reader = csv.DictReader(f)
+                        section_level_sum, section_level_count = 0, 0
+                        section_metrics_sum = defaultdict(float)
+                        section_metrics_count = defaultdict(int)
+                        for row in reader:
+                            level = WATER_QUALITY_LEVEL_MAP.get(row.get('水质类别', '').strip(), None)
+                            if level:
+                                section_level_sum += level
+                                section_level_count += 1
+                            # 关键指标
+                            for metric in ['水温(℃)', 'pH(无量纲)', '溶解氧(mg/L)', '电导率(μS/cm)', '浊度(NTU)']:
+                                try:
+                                    val = float(row.get(metric, '').replace('*', '').strip())
+                                    section_metrics_sum[metric] += val
+                                    section_metrics_count[metric] += 1
+                                except:
+                                    continue
+                        # 断面聚合
+                        section_avg_level = section_level_sum / section_level_count if section_level_count else None
+                        section_avg_metrics = {k: section_metrics_sum[k]/section_metrics_count[k] for k in section_metrics_sum if section_metrics_count[k]}
+                        basin_level_sum += section_level_sum
+                        basin_level_count += section_level_count
+                        for k in section_metrics_sum:
+                            basin_metrics_sum[k] += section_metrics_sum[k]
+                            basin_metrics_count[k] += section_metrics_count[k]
+                        province_data['basins'].append({
+                            'basin': basin,
+                            'section': section,
+                            'avg_level': section_avg_level,
+                            'avg_level_label': WATER_QUALITY_LEVEL_MAP_REVERSE.get(round(section_avg_level), None) if section_avg_level else None,
+                            'avg_metrics': section_avg_metrics,
+                            'geo': SECTION_GEO.get(section, {}),
+                        })
+            # 流域聚合
+            basin_avg_level = basin_level_sum / basin_level_count if basin_level_count else None
+            basin_avg_metrics = {k: basin_metrics_sum[k]/basin_metrics_count[k] for k in basin_metrics_sum if basin_metrics_count[k]}
+            basin_data['avg_level'] = basin_avg_level
+            basin_data['avg_metrics'] = basin_avg_metrics
+            province_data['basins'].append(basin_data)
+            level_sum += basin_level_sum
+            level_count += basin_level_count
+            for k in basin_metrics_sum:
+                metrics_sum[k] += basin_metrics_sum[k]
+                metrics_count[k] += basin_metrics_count[k]
+        # 省级聚合
+        province_data['avg_level'] = level_sum / level_count if level_count else None
+        province_data['avg_metrics'] = {k: metrics_sum[k]/metrics_count[k] for k in metrics_sum if metrics_count[k]}
+        result.append(province_data)
+    return jsonify(result)
+
+@app.route('/api/water_quality/section_data')
+def section_data():
+    province = request.args.get('province')
+    basin = request.args.get('basin')
+    section = request.args.get('section')
+    start_time = request.args.get('start_time')
+    end_time = request.args.get('end_time')
+    indicator = request.args.get('indicator')  # 逗号分隔
+    # 路径拼接
+    base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'water_quality')
+    if not os.path.exists(base_dir):
+        base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'water_quality')
+    section_dir = os.path.join(base_dir, province, basin, section, '2021-04')
+    if not os.path.exists(section_dir):
+        return jsonify({'error': 'section not found'}), 404
+    csv_files = [f for f in os.listdir(section_dir) if f.endswith('.csv')]
+    timeseries = []
+    for csv_file in csv_files:
+        csv_path = os.path.join(section_dir, csv_file)
+        with open(csv_path, encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                # 时间过滤
+                time_str = row.get('监测时间', '').strip()
+                if start_time and time_str < start_time:
+                    continue
+                if end_time and time_str > end_time:
+                    continue
+                # 指标过滤
+                data = {'time': time_str}
+                if indicator:
+                    for ind in indicator.split(','):
+                        data[ind] = row.get(ind, None)
+                else:
+                    for k in row:
+                        if k not in ['省份', '流域', '断面名称', '站点情况']:
+                            data[k] = row[k]
+                timeseries.append(data)
+    return jsonify(timeseries)
 
 def open_browser():
     webbrowser.open('http://127.0.0.1:5000/main_info')
