@@ -11,6 +11,44 @@ let currentSection = '';
 let currentIndicators = ['水温(℃)'];
 let currentDateRange = null;
 
+// 省份中心点经纬度（简化版，可补充完整）
+const provinceCenters = {
+    '北京市': [116.41, 39.90],
+    '天津市': [117.20, 39.13],
+    '河北省': [114.48, 38.03],
+    '山西省': [112.55, 37.87],
+    '内蒙古自治区': [111.65, 40.82],
+    '辽宁省': [123.43, 41.80],
+    '吉林省': [125.32, 43.82],
+    '黑龙江省': [126.63, 45.75],
+    '上海市': [121.47, 31.23],
+    '江苏省': [118.78, 32.07],
+    '浙江省': [120.19, 30.26],
+    '安徽省': [117.27, 31.86],
+    '福建省': [119.30, 26.08],
+    '江西省': [115.89, 28.68],
+    '山东省': [117.00, 36.67],
+    '河南省': [113.65, 34.76],
+    '湖北省': [114.31, 30.59],
+    '湖南省': [113.00, 28.21],
+    '广东省': [113.26, 23.13],
+    '广西壮族自治区': [108.33, 22.84],
+    '海南省': [110.35, 20.02],
+    '重庆市': [106.55, 29.56],
+    '四川省': [104.07, 30.67],
+    '贵州省': [106.71, 26.57],
+    '云南省': [102.73, 25.04],
+    '西藏自治区': [91.11, 29.97],
+    '陕西省': [108.95, 34.27],
+    '甘肃省': [103.73, 36.03],
+    '青海省': [101.78, 36.56],
+    '宁夏回族自治区': [106.27, 38.47],
+    '新疆维吾尔自治区': [87.62, 43.82],
+    '台湾省': [121.50, 25.05],
+    '香港特别行政区': [114.17, 22.28],
+    '澳门特别行政区': [113.54, 22.19]
+};
+
 // 初始化页面
 window.addEventListener('DOMContentLoaded', async function() {
     await loadWaterQualitySummary();
@@ -140,17 +178,30 @@ function renderBasinMap() {
     const dom = document.getElementById('waterQualityMap');
     if (!dom || !currentProvince) return;
     const myChart = echarts.init(dom);
-    // 取该省所有流域下断面，模拟地理坐标（如有真实坐标可替换）
+    // 取该省所有流域下断面
     const p = waterQualityData.find(x => x.province === currentProvince);
     if (!p) return;
     const basinSections = p.basins.filter(b => b.basin === currentBasin && b.section);
-    // 生成随机坐标（如有真实坐标可用b.geo）
-    const scatterData = basinSections.map((b, i) => ({
-        name: b.section,
-        value: [116 + Math.random(), 39 + Math.random(), b.avg_metrics['溶解氧(mg/L)'] || 0],
-        label: {show: false},
-        section: b.section
-    }));
+    // 断面气泡坐标优先用geo，否则用省份中心
+    const scatterData = basinSections.map((b, i) => {
+        let lng = null, lat = null;
+        if (b.geo && b.geo.lng && b.geo.lat) {
+            lng = b.geo.lng; lat = b.geo.lat;
+        } else if (provinceCenters[currentProvince]) {
+            lng = provinceCenters[currentProvince][0] + (Math.random() - 0.5) * 0.5;
+            lat = provinceCenters[currentProvince][1] + (Math.random() - 0.5) * 0.5;
+        } else {
+            lng = 116 + Math.random();
+            lat = 39 + Math.random();
+        }
+        return {
+            name: b.section,
+            value: [lng, lat, b.avg_metrics['溶解氧(mg/L)'] || 0],
+            label: {show: false},
+            section: b.section,
+            basin: b.basin
+        };
+    });
     fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
         .then(res => res.json())
         .then(geoJson => {
@@ -176,8 +227,12 @@ function renderBasinMap() {
                 }]
             });
             myChart.on('click', function(params) {
-                document.getElementById('sectionSelect').value = params.name;
-                currentSection = params.name;
+                // 自动设置省份、流域、断面下拉框
+                document.getElementById('provinceSelect').value = currentProvince;
+                document.getElementById('basinSelect').value = params.data.basin;
+                document.getElementById('sectionSelect').value = params.data.section;
+                currentBasin = params.data.basin;
+                currentSection = params.data.section;
                 renderSectionTrend();
             });
         });
@@ -189,8 +244,12 @@ function renderSectionMap() {
 }
 
 // 渲染断面时序折线图
+let sectionTrendNoData = false;
 async function renderSectionTrend() {
-    if (!currentProvince || !currentBasin || !currentSection) return;
+    if (!currentProvince || !currentBasin || !currentSection) {
+        clearSectionTrendNoData();
+        return;
+    }
     const dom = document.getElementById('sectionTrendChart');
     if (!dom) return;
     const myChart = echarts.init(dom);
@@ -206,7 +265,13 @@ async function renderSectionTrend() {
     const timeseries = await res.json();
     if (!Array.isArray(timeseries) || timeseries.length === 0) {
         myChart.clear();
-        myChart.setOption({title: {text: '无数据', left: 'center'}});
+        myChart.setOption({
+            title: {text: '无数据', left: 'center', top: 'middle', textStyle: {color: '#e74c3c', fontSize: 20}},
+            xAxis: {show: false},
+            yAxis: {show: false},
+            series: []
+        });
+        sectionTrendNoData = true;
         return;
     }
     // 构造ECharts折线图数据
@@ -217,6 +282,7 @@ async function renderSectionTrend() {
         data: timeseries.map(d => parseFloat(d[ind]) || null),
         smooth: true
     }));
+    myChart.clear();
     myChart.setOption({
         tooltip: {trigger: 'axis'},
         legend: {data: series.map(s => s.name)},
@@ -224,4 +290,12 @@ async function renderSectionTrend() {
         yAxis: {type: 'value'},
         series: series
     });
+    sectionTrendNoData = false;
+}
+function clearSectionTrendNoData() {
+    const dom = document.getElementById('sectionTrendChart');
+    if (!dom) return;
+    const myChart = echarts.init(dom);
+    myChart.clear();
+    sectionTrendNoData = false;
 }
