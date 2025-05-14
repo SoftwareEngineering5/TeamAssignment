@@ -40,6 +40,196 @@
             </div>
         </div>
         
+        <!-- 鱼类数据展示部分 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-fish me-2"></i>鱼类数据展示
+                    </div>
+                    <div class="card-body">
+                        <!-- 牧场和鱼类选择器 -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label for="marineFarmSelect" class="form-label">选择海洋牧场：</label>
+                                <select class="form-select" id="marineFarmSelect">
+                                    <option value="0">山东青岛</option>
+                                    <option value="1">浙江舟山</option>
+                                    <option value="2">福建厦门</option>
+                                    <option value="3">广东湛江</option>
+                                    <option value="4">辽宁大连</option>
+                                    <option value="5">河北秦皇岛</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="fishSpecies" class="form-label">选择鱼类种类：</label>
+                                <select class="form-select" id="fishSpecies">
+                                    <option value="Bream">Bream (鲤科)</option>
+                                    <option value="Roach">Roach (拟鲤)</option>
+                                    <option value="Whitefish">Whitefish (白鱼)</option>
+                                    <option value="Parkki">Parkki (鲈鱼)</option>
+                                    <option value="Perch">Perch (鲈鱼)</option>
+                                    <option value="Pike">Pike (梭鱼)</option>
+                                    <option value="Smelt">Smelt (胡瓜鱼)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button id="loadFishData" class="btn btn-primary">
+                                    <i class="fas fa-search me-2"></i>加载数据
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 鱼类图片和雷达图展示 -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <i class="fas fa-image me-2"></i>鱼类图片
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <img id="fishImage" src="{{ url_for('static', filename='images/Bream.png') }}" 
+                                             alt="鱼类图片" class="img-fluid rounded" style="max-height: 300px;">
+                                        <h4 id="fishName" class="mt-3">Bream</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 雷达图展示 -->
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <i class="fas fa-chart-pie me-2"></i>数据雷达图
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label for="dataAttribute" class="form-label">数据属性：</label>
+                                                <select class="form-select" id="dataAttribute">
+                                                    <option value="Weight(g)">体重</option>
+                                                    <option value="Length1(cm)">长度1</option>
+                                                    <option value="Length2(cm)">长度2</option>
+                                                    <option value="Length3(cm)">长度3</option>
+                                                    <option value="Height(cm)">高度</option>
+                                                    <option value="Width(cm)">宽度</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="chart-container">
+                                            <canvas id="fishRadarChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 鱼类统计数据 -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <i class="fas fa-chart-bar me-2"></i>统计数据
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <div class="mb-3">
+                                                    <h6>平均体重</h6>
+                                                    <p id="avgWeight" class="h4 text-primary">0 g</p>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <h6>平均长度</h6>
+                                                    <p id="avgLength" class="h4 text-info">0 cm</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="mb-3">
+                                                    <h6>平均高度</h6>
+                                                    <p id="avgHeight" class="h4 text-success">0 cm</p>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <h6>平均宽度</h6>
+                                                    <p id="avgWidth" class="h4 text-warning">0 cm</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <h6>样本数量</h6>
+                                            <p id="sampleCount" class="h5">0</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 极值数据 -->
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <i class="fas fa-chart-line me-2"></i>极值数据
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <div class="mb-3">
+                                                    <h6>最大体重</h6>
+                                                    <p id="maxWeight" class="h4 text-primary">0 g</p>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <h6>最小体重</h6>
+                                                    <p id="minWeight" class="h4 text-info">0 g</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="mb-3">
+                                                    <h6>最大长度</h6>
+                                                    <p id="maxLength" class="h4 text-success">0 cm</p>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <h6>最小长度</h6>
+                                                    <p id="minLength" class="h4 text-warning">0 cm</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 鱼类数据表格 -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <i class="fas fa-table me-2"></i>详细数据
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>编号</th>
+                                                        <th>体重(g)</th>
+                                                        <th>长度1(cm)</th>
+                                                        <th>长度2(cm)</th>
+                                                        <th>长度3(cm)</th>
+                                                        <th>高度(cm)</th>
+                                                        <th>宽度(cm)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="fishDataTable">
+                                                    <!-- 数据将通过JavaScript动态填充 -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- 数据存储状态 -->
         <div class="row">
             <div class="col-md-6">
@@ -84,152 +274,271 @@
                 </div>
             </div>
         </div>
-        
-        <!-- 数据管理 -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <i class="fas fa-cogs me-2"></i>数据管理
-                    </div>
-                    <div class="card-body">
-                        <ul class="nav nav-tabs" id="dataTabs" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="video-tab" data-bs-toggle="tab" data-bs-target="#video" type="button" role="tab" aria-controls="video" aria-selected="true">视频数据</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="sensor-tab" data-bs-toggle="tab" data-bs-target="#sensor" type="button" role="tab" aria-controls="sensor" aria-selected="false">传感器数据</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="analysis-tab" data-bs-toggle="tab" data-bs-target="#analysis" type="button" role="tab" aria-controls="analysis" aria-selected="false">数据分析</button>
-                            </li>
-                        </ul>
-                        <div class="tab-content p-3" id="dataTabsContent">
-                            <div class="tab-pane fade show active" id="video" role="tabpanel" aria-labelledby="video-tab">
-                                <div class="mb-3">
-                                    <label for="videoDate" class="form-label">选择日期</label>
-                                    <input type="date" class="form-control" id="videoDate">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="videoCamera" class="form-label">选择摄像头</label>
-                                    <select class="form-select" id="videoCamera">
-                                        <option selected>所有摄像头</option>
-                                        <option>摄像头 1</option>
-                                        <option>摄像头 2</option>
-                                        <option>摄像头 3</option>
-                                    </select>
-                                </div>
-                                <button class="btn btn-primary">查询视频</button>
-                                <div class="mt-3">
-                                    <h5>视频列表</h5>
-                                    <table class="table table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>时间</th>
-                                                <th>摄像头</th>
-                                                <th>时长</th>
-                                                <th>大小</th>
-                                                <th>操作</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>2025-05-04 08:00:00</td>
-                                                <td>摄像头 1</td>
-                                                <td>1小时</td>
-                                                <td>2.5 GB</td>
-                                                <td><button class="btn btn-sm btn-primary">播放</button> <button class="btn btn-sm btn-danger">删除</button></td>
-                                            </tr>
-                                            <tr>
-                                                <td>2025-05-04 08:00:00</td>
-                                                <td>摄像头 2</td>
-                                                <td>1小时</td>
-                                                <td>2.3 GB</td>
-                                                <td><button class="btn btn-sm btn-primary">播放</button> <button class="btn btn-sm btn-danger">删除</button></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div class="tab-pane fade" id="sensor" role="tabpanel" aria-labelledby="sensor-tab">
-                                <div class="mb-3">
-                                    <label for="sensorType" class="form-label">传感器类型</label>
-                                    <select class="form-select" id="sensorType">
-                                        <option selected>所有类型</option>
-                                        <option>温度传感器</option>
-                                        <option>盐度传感器</option>
-                                        <option>pH传感器</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="sensorDateRange" class="form-label">日期范围</label>
-                                    <input type="date" class="form-control" id="sensorStartDate" placeholder="开始日期">
-                                    <input type="date" class="form-control" id="sensorEndDate" placeholder="结束日期">
-                                </div>
-                                <button class="btn btn-primary">查询数据</button>
-                                <div class="mt-3">
-                                    <h5>传感器数据列表</h5>
-                                    <table class="table table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>时间</th>
-                                                <th>传感器ID</th>
-                                                <th>类型</th>
-                                                <th>数值</th>
-                                                <th>状态</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>2025-05-04 08:00:00</td>
-                                                <td>TEMP-001</td>
-                                                <td>温度</td>
-                                                <td>22.5°C</td>
-                                                <td><span class="badge bg-success">正常</span></td>
-                                            </tr>
-                                            <tr>
-                                                <td>2025-05-04 08:00:00</td>
-                                                <td>SAL-005</td>
-                                                <td>盐度</td>
-                                                <td>32.1‰</td>
-                                                <td><span class="badge bg-danger">异常</span></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div class="tab-pane fade" id="analysis" role="tabpanel" aria-labelledby="analysis-tab">
-                                <div class="mb-3">
-                                    <label for="analysisType" class="form-label">分析类型</label>
-                                    <select class="form-select" id="analysisType">
-                                        <option selected>趋势分析</option>
-                                        <option>异常检测</option>
-                                        <option>预测分析</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="analysisPeriod" class="form-label">分析周期</label>
-                                    <select class="form-select" id="analysisPeriod">
-                                        <option selected>最近7天</option>
-                                        <option>最近30天</option>
-                                        <option>最近90天</option>
-                                    </select>
-                                </div>
-                                <button class="btn btn-primary">生成分析报告</button>
-                                <div class="mt-3">
-                                    <h5>分析结果</h5>
-                                    <div class="alert alert-info">
-                                        <strong>趋势分析：</strong> 水温呈上升趋势，盐度保持稳定。
-                                    </div>
-                                    <div class="alert alert-warning">
-                                        <strong>异常检测：</strong> 检测到3次异常数据，详情请查看完整报告。
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
+
+    <script>
+        // 鱼类数据 - 存储所有牧场的数据
+        let allFishData = {};
+        let currentFishData = [];
+        let fishRadarChart = null;
+        let currentRanchIndex = 0;
+        
+        // 牧场与数据文件映射
+        const ranchFileMap = {
+            0: 'Fish.csv',    // 山东青岛
+            1: 'Fish1.csv',   // 浙江舟山
+            2: 'Fish2.csv',   // 福建厦门
+            3: 'Fish3.csv',   // 广东湛江
+            4: 'Fish4.csv',   // 辽宁大连
+            5: 'Fish5.csv'    // 河北秦皇岛
+        };
+        
+        // 牧场名称
+        const ranchNames = ['山东青岛', '浙江舟山', '福建厦门', '广东湛江', '辽宁大连', '河北秦皇岛'];
+        
+        // 加载所有牧场数据
+        async function loadAllFishData() {
+            try {
+                // 清空之前的数据
+                allFishData = {};
+                
+                // 遍历所有牧场文件
+                for (let ranchIndex in ranchFileMap) {
+                    const fileName = ranchFileMap[ranchIndex];
+                    const response = await fetch("{{ url_for('static', filename='') }}" + fileName);
+                    const csvData = await response.text();
+                    
+                    // 解析CSV数据
+                    const lines = csvData.split('\n');
+                    const headers = lines[0].split(',');
+                    
+                    for (let i = 1; i < lines.length; i++) {
+                        if (lines[i].trim() === '') continue;
+                        
+                        const values = lines[i].split(',');
+                        const fish = {};
+                        
+                        for (let j = 0; j < headers.length; j++) {
+                            fish[headers[j].trim()] = values[j].trim();
+                        }
+                        
+                        const species = fish.Species;
+                        if (!allFishData[species]) {
+                            allFishData[species] = {};
+                        }
+                        
+                        // 按牧场存储数据
+                        if (!allFishData[species][ranchIndex]) {
+                            allFishData[species][ranchIndex] = [];
+                        }
+                        allFishData[species][ranchIndex].push(fish);
+                    }
+                }
+                
+                console.log('所有牧场鱼类数据加载完成', allFishData);
+                // 默认加载Bream数据
+                updateFishDisplay();
+                // 初始化雷达图
+                updateRadarChart(document.getElementById('fishSpecies').value);
+            } catch (error) {
+                console.error('加载鱼类数据失败:', error);
+                alert('加载鱼类数据失败，请刷新页面重试。');
+            }
+        }
+        
+        // 更新鱼类显示
+        function updateFishDisplay() {
+            const selectedSpecies = document.getElementById('fishSpecies').value;
+            currentRanchIndex = document.getElementById('marineFarmSelect').value;
+            
+            // 获取当前牧场当前种类的鱼
+            currentFishData = allFishData[selectedSpecies]?.[currentRanchIndex] || [];
+            
+            if (currentFishData.length === 0) {
+                console.warn(`没有找到 ${selectedSpecies} 的数据`);
+                return;
+            }
+            
+            // 更新图片和名称
+            document.getElementById('fishImage').src = `{{ url_for('static', filename='images/') }}${selectedSpecies}.png`;
+            document.getElementById('fishName').textContent = selectedSpecies;
+            
+            // 计算统计数据
+            const weights = currentFishData.map(fish => parseFloat(fish['Weight(g)']));
+            const length1s = currentFishData.map(fish => parseFloat(fish['Length1(cm)']));
+            const length2s = currentFishData.map(fish => parseFloat(fish['Length2(cm)']));
+            const length3s = currentFishData.map(fish => parseFloat(fish['Length3(cm)']));
+            const heights = currentFishData.map(fish => parseFloat(fish['Height(cm)']));
+            const widths = currentFishData.map(fish => parseFloat(fish['Width(cm)']));
+            
+            const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+            const totalLength1 = length1s.reduce((sum, l) => sum + l, 0);
+            const totalLength2 = length2s.reduce((sum, l) => sum + l, 0);
+            const totalLength3 = length3s.reduce((sum, l) => sum + l, 0);
+            const totalHeight = heights.reduce((sum, h) => sum + h, 0);
+            const totalWidth = widths.reduce((sum, w) => sum + w, 0);
+            
+            const avgWeight = (totalWeight / currentFishData.length).toFixed(2);
+            const avgLength1 = (totalLength1 / currentFishData.length).toFixed(2);
+            const avgLength2 = (totalLength2 / currentFishData.length).toFixed(2);
+            const avgLength3 = (totalLength3 / currentFishData.length).toFixed(2);
+            const avgHeight = (totalHeight / currentFishData.length).toFixed(2);
+            const avgWidth = (totalWidth / currentFishData.length).toFixed(2);
+            
+            const maxWeight = Math.max(...weights).toFixed(2);
+            const minWeight = Math.min(...weights).toFixed(2);
+            const maxLength = Math.max(...length3s).toFixed(2);
+            const minLength = Math.min(...length1s).toFixed(2);
+            
+            // 更新统计信息
+            document.getElementById('avgWeight').textContent = `${avgWeight} g`;
+            document.getElementById('avgLength').textContent = `${avgLength1} / ${avgLength2} / ${avgLength3} cm`;
+            document.getElementById('avgHeight').textContent = `${avgHeight} cm`;
+            document.getElementById('avgWidth').textContent = `${avgWidth} cm`;
+            document.getElementById('sampleCount').textContent = currentFishData.length;
+            
+            // 更新极值数据
+            document.getElementById('maxWeight').textContent = `${maxWeight} g`;
+            document.getElementById('minWeight').textContent = `${minWeight} g`;
+            document.getElementById('maxLength').textContent = `${maxLength} cm`;
+            document.getElementById('minLength').textContent = `${minLength} cm`;
+            
+            // 更新表格数据
+            const tableBody = document.getElementById('fishDataTable');
+            tableBody.innerHTML = '';
+            
+            currentFishData.forEach((fish, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${fish['Weight(g)']}</td>
+                    <td>${fish['Length1(cm)']}</td>
+                    <td>${fish['Length2(cm)']}</td>
+                    <td>${fish['Length3(cm)']}</td>
+                    <td>${fish['Height(cm)']}</td>
+                    <td>${fish['Width(cm)']}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        // 更新雷达图 - 显示所有牧场数据
+        function updateRadarChart(species) {
+            const dataAttribute = document.getElementById('dataAttribute').value;
+            
+            // 准备雷达图数据
+            const avgData = [];
+            const maxData = [];
+            const minData = [];
+            
+            // 遍历所有牧场
+            for (let ranchIndex in ranchFileMap) {
+                const ranchFishData = allFishData[species]?.[ranchIndex] || [];
+                
+                if (ranchFishData.length > 0) {
+                    const values = ranchFishData.map(fish => parseFloat(fish[dataAttribute]));
+                    const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
+                    const max = Math.max(...values);
+                    const min = Math.min(...values);
+                    
+                    avgData.push(avg);
+                    maxData.push(max);
+                    minData.push(min);
+                } else {
+                    // 如果没有数据，填充0
+                    avgData.push(0);
+                    maxData.push(0);
+                    minData.push(0);
+                }
+            }
+            
+            // 创建或更新雷达图
+            const ctx = document.getElementById('fishRadarChart').getContext('2d');
+            
+            if (fishRadarChart) {
+                fishRadarChart.destroy();
+            }
+            
+            fishRadarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ranchNames,
+                    datasets: [
+                        {
+                            label: '平均值',
+                            data: avgData,
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                            pointRadius: 4
+                        },
+                        {
+                            label: '最大值',
+                            data: maxData,
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+                            pointRadius: 4
+                        },
+                        {
+                            label: '最小值',
+                            data: minData,
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgba(75, 192, 192, 1)',
+                            pointRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            angleLines: {
+                                display: true
+                            },
+                            suggestedMin: 0,
+                            ticks: {
+                                stepSize: 20
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: '各地区鱼类数据对比'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 加载所有牧场鱼类数据
+            loadAllFishData();
+            
+            // 绑定加载按钮事件
+            document.getElementById('loadFishData').addEventListener('click', function() {
+                updateFishDisplay();
+                updateRadarChart(document.getElementById('fishSpecies').value);
+            });
+            
+            // 绑定牧场选择变化事件
+            document.getElementById('marineFarmSelect').addEventListener('change', function() {
+                updateFishDisplay();
+            });
+            
+            // 绑定数据属性选择变化事件
+            document.getElementById('dataAttribute').addEventListener('change', function() {
+                updateRadarChart(document.getElementById('fishSpecies').value);
+            });
+        });
+    </script>
+
 {% endblock %}
