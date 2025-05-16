@@ -41,6 +41,7 @@
 
         .navbar-brand, .nav-link {
             color: white !important;
+            font-size: 0.9rem;
         }
 
         .nav-link:hover {
@@ -122,6 +123,10 @@
             max-height: 320px;   /* 可根据需要调高/低 */
             overflow-y: auto;    /* 内容超出时出现垂直滚动条 */
         }
+        
+        /* ★导航行自动缩放字体★  ------------------------- */
+        .nav-auto-fit         { font-size: 16px; }        /* 起始字号 */
+        .nav-auto-fit a       { white-space: nowrap; }    /* 不允许单项换行 */
 
         @media (max-width: 768px) {
             .main-content {
@@ -150,7 +155,7 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
+                <ul class="navbar-nav nav-auto-fit">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main_info') }}"><i class="fas fa-home me-1"></i>首页</a>
                     </li>
@@ -1100,6 +1105,32 @@
             console.warn("未找到设备状态图表元素");
         }
     }
+
+    (function () {
+    const MIN_SIZE = 12;    // 允许缩到的最小字号（px）
+    const STEP     = 1;     // 每次递减步长
+
+    const nav     = document.querySelector('.nav-auto-fit');
+    if (!nav) return;       // 页面没有该导航直接返回
+
+    function shrinkToFit () {
+        /* 还原到起始字号再开始检测 */
+        const start = parseFloat(getComputedStyle(nav).fontSize);
+        let size    = start;
+
+        nav.style.fontSize = start + 'px';
+
+        /* 只要超宽且还能变小，就循环缩小字号 */
+        while (nav.scrollWidth > nav.clientWidth && size > MIN_SIZE) {
+            size -= STEP;
+            nav.style.fontSize = size + 'px';
+        }
+    }
+
+    /* 初次渲染、窗口变动时都执行一次 */
+    window.addEventListener('load',   shrinkToFit);
+    window.addEventListener('resize', shrinkToFit);
+})();
 </script>
 </body>
 </html>
