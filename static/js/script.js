@@ -323,7 +323,7 @@ function getFormattedFileName(baseName = '断面时序图') {
     return `${clean(province)}_${clean(basin)}_${clean(section)}_${clean(indicators)}_${baseName}_${dateStr}`;
 }
 
-// 下载断面时序折线图（ECharts）
+// 下载断面时序折线图 ECharts(右上角选择器)
 document.getElementById('downloadSectionChartBtn')?.addEventListener('click', function() {
     const dom = document.getElementById('sectionTrendChart');
     if (!dom) return;
@@ -343,6 +343,7 @@ document.getElementById('downloadSectionChartBtn')?.addEventListener('click', fu
     a.click();
 });
 
+//下载断面时序折线图 ECharts(小图标)
 document.getElementById('downloadTrendChartBtn')?.addEventListener('click', function() {
     const dom = document.getElementById('sectionTrendChart');
     if (!dom) return;

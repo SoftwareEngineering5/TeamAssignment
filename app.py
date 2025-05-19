@@ -897,6 +897,27 @@ def export_water_quality():
         download_name=filename  # 关键修改点
     )
 
+# 鱼类数据导出接口
+@app.route('/api/fish/export')
+def export_fish_data():
+    ranch = request.args.get('ranch')
+    if not ranch:
+        return '未指定牧场', 400
+    # 文件名
+    filename = f'Fish_{ranch}.csv'
+    fish_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'Fish')
+    file_path = os.path.join(fish_dir, filename)
+    if not os.path.exists(file_path):
+        return '数据文件不存在', 404
+    encoded_utf8 = quote(filename.encode('utf-8'))
+    encoded_rfc5987 = quote(filename, safe='')
+    # content_disposition = (
+    #     f'attachment; filename="{encoded_utf8}"; '
+    #     f'filename*=UTF-8''{encoded_rfc5987}'
+    # )
+    return send_file(file_path, mimetype='text/csv', as_attachment=True, download_name=filename)
+
+
 def open_browser():
     webbrowser.open('http://127.0.0.1:5000/login')
 

@@ -13,14 +13,14 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a class="dropdown-item" href="#" id="uploadDataBtn">
-                        <i class="fas fa-cloud-upload-alt me-2"></i>上传新监测数据
+                        <i class="fas fa-cloud-upload-alt me-2"></i>上传鱼类数据
                     </a></li>
-                    <li><a class="dropdown-item" href="#" id="exportDataBtn">
-                        <i class="fas fa-download me-2"></i>导出当前数据集
+                    <li><a class="dropdown-item" href="#" id="exportDataBtn" data-bs-toggle="modal" data-bs-target="#exportFishModal">
+                        <i class="fas fa-download me-2"></i>导出鱼类数据
                     </a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="#" id="downloadChartBtn">
-                        <i class="fas fa-image me-2"></i>下载可视化图表
+                        <i class="fas fa-image me-2"></i>下载雷达图
                     </a></li>
                 </ul>
             </div>
@@ -300,6 +300,38 @@
         </div>
     </div>
 
+    <!-- 鱼类数据导出模态框 -->
+    <div class="modal fade" id="exportFishModal" tabindex="-1" aria-labelledby="exportFishModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exportFishModalLabel">导出鱼类数据</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="fishExportForm">
+              <div class="mb-3">
+                <label class="form-label">选择海洋牧场</label>
+                <select class="form-select" id="fishExportRanchSelect">
+                  <option value="">请选择</option>
+                  <option value="山东青岛">山东青岛</option>
+                  <option value="浙江舟山">浙江舟山</option>
+                  <option value="福建厦门">福建厦门</option>
+                  <option value="广东湛江">广东湛江</option>
+                  <option value="辽宁大连">辽宁大连</option>
+                  <option value="河北秦皇岛">河北秦皇岛</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <div id="fishExportStatus" class="small text-muted mt-1"></div>
+              </div>
+              <button type="button" class="btn btn-success w-100" id="startFishExportBtn">导出</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script>
         // 鱼类数据 - 存储所有牧场的数据
         let allFishData = {};
@@ -309,14 +341,14 @@
         
         // 牧场与数据文件映射
         const ranchFileMap = {
-            0: './fish_data/Fish.csv',    // 山东青岛
-            1: './fish_data/Fish1.csv',   // 浙江舟山
-            2: './fish_data/Fish2.csv',   // 福建厦门
-            3: './fish_data/Fish3.csv',   // 广东湛江
-            4: './fish_data/Fish4.csv',   // 辽宁大连
-            5: './fish_data/Fish5.csv'    // 河北秦皇岛
+            0: './Fish/Fish_山东青岛.csv',   // 山东青岛
+            1: './Fish/Fish_浙江舟山.csv',   // 浙江舟山
+            2: './Fish/Fish_福建厦门.csv',   // 福建厦门
+            3: './Fish/Fish_广东湛江.csv',   // 广东湛江
+            4: './Fish/Fish_辽宁大连.csv',   // 辽宁大连
+            5: './Fish/Fish_河北秦皇岛.csv'  // 河北秦皇岛
         };
-        
+
         // 牧场名称
         const ranchNames = ['山东青岛', '浙江舟山', '福建厦门', '广东湛江', '辽宁大连', '河北秦皇岛'];
         
@@ -542,7 +574,7 @@
             });
         }
         
-        // 添加下载图表功能
+        // 添加下载图表功能(右上角选择器)
         document.getElementById('downloadChartBtn').addEventListener('click', function() {
             if (!fishRadarChart) {
                 alert('请先加载图表数据');
@@ -586,7 +618,8 @@
             link.click();
         });
         
-            document.getElementById('downloadRadarChartBtn').addEventListener('click', function() {
+        // 添加下载图表功能(小图标)
+        document.getElementById('downloadRadarChartBtn').addEventListener('click', function() {
             if (!fishRadarChart) {
                 alert('请先加载图表数据');
                 return;
@@ -648,6 +681,49 @@
             // 绑定数据属性选择变化事件
             document.getElementById('dataAttribute').addEventListener('change', function() {
                 updateRadarChart(document.getElementById('fishSpecies').value);
+            });
+        });
+        
+        // ====== 鱼类数据导出功能 ======
+        // 打开导出模态框时重置状态
+        const exportFishModal = document.getElementById('exportFishModal');
+        exportFishModal?.addEventListener('show.bs.modal', function() {
+            document.getElementById('fishExportRanchSelect').value = '';
+            document.getElementById('fishExportStatus').textContent = '';
+        });
+        // 导出按钮点击事件
+        document.getElementById('startFishExportBtn')?.addEventListener('click', function() {
+            const ranch = document.getElementById('fishExportRanchSelect').value;
+            const status = document.getElementById('fishExportStatus');
+            if (!ranch) {
+                status.textContent = '请选择要导出的海洋牧场';
+                return;
+            }
+            status.textContent = '正在导出...';
+            const url = `/api/fish/export?ranch=${encodeURIComponent(ranch)}`;
+            fetch(url).then(async res => {
+                if (!res.ok) {
+                    status.textContent = '导出失败';
+                    return;
+                }
+                const blob = await res.blob();
+                let filename = res.headers.get('Content-Disposition');
+                if (filename) {
+                    const match = filename.match(/filename\*=UTF-8''(.+)/);
+                    if (match) filename = decodeURIComponent(match[1]);
+                    else filename = `Fish_${ranch}.csv`;
+                } else {
+                    filename = `Fish_${ranch}.csv`;
+                }
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                status.textContent = '导出完成';
+            }).catch(() => {
+                status.textContent = '导出失败';
             });
         });
     </script>
