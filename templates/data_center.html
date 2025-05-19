@@ -541,31 +541,46 @@
             });
         }
         
-        // 在现有脚本中添加下载功能
+        // 添加下载图表功能
         document.getElementById('downloadChartBtn').addEventListener('click', function() {
             if (!fishRadarChart) {
                 alert('请先加载图表数据');
                 return;
             }
 
-            // 创建临时canvas获取高清图像
+            // 获取当前选择信息
+            const ranchSelect = document.getElementById('marineFarmSelect');
+            const ranchName = ranchSelect.options[ranchSelect.selectedIndex].text.replace(/\s+/g, '');
+            
+            const fishSelect = document.getElementById('fishSpecies');
+            const fishName = fishSelect.options[fishSelect.selectedIndex].text
+                .replace(/\s+/g, '') // 移除所有空格
+                .replace(/\(/g, '（').replace(/\)/g, '）'); // 替换括号为全角
+            
+            const attributeSelect = document.getElementById('dataAttribute');
+            const attributeName = attributeSelect.options[attributeSelect.selectedIndex].text;
+
+            // 创建文件名（包含过滤非法字符）
+            const cleanFileName = `${ranchName}_${fishName}_${attributeName}_水质数据雷达图_${new Date().toISOString().slice(0,10)}`
+                .replace(/[\\/:*?"<>|]/g, ''); // 移除非法文件字符
+
+            // 创建高清Canvas
             const tempCanvas = document.createElement('canvas');
             const originalCanvas = document.getElementById('fishRadarChart');
-            
-            // 设置高清分辨率
             const scale = 2;
+            
             tempCanvas.width = originalCanvas.width * scale;
             tempCanvas.height = originalCanvas.height * scale;
             tempCanvas.style.width = originalCanvas.width + 'px';
             tempCanvas.style.height = originalCanvas.height + 'px';
-            
+
             const tempCtx = tempCanvas.getContext('2d');
             tempCtx.scale(scale, scale);
             tempCtx.drawImage(originalCanvas, 0, 0);
 
             // 触发下载
             const link = document.createElement('a');
-            link.download = `水质数据雷达图_${new Date().toISOString().slice(0,10)}.png`;
+            link.download = `${cleanFileName}.png`;
             link.href = tempCanvas.toDataURL('image/png');
             link.click();
         });
