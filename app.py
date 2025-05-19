@@ -1,66 +1,11 @@
-# from flask import Flask, render_template, redirect, url_for
-# import webbrowser
-# import threading
-
-# app = Flask(__name__)
-
-# # 用户角色判断（简单示例，实际项目中需要更复杂的用户认证系统）
-# def is_admin(user):
-#     return user == 'admin'
-
-# @app.route('/')
-# def index():
-#     return render_template('main_info.html')
-
-# @app.route('/admin_ctrl')
-# def admin_ctrl():
-#     user = 'admin'  # 假设当前用户是管理员
-#     if is_admin(user):
-#         return render_template('admin_ctrl.html')
-#     else:
-#         return redirect(url_for('index'))  # 使用url_for来重定向
-
-# @app.route('/water_system')
-# def water_system():
-#     return render_template('water_system.html')
-
-# @app.route('/smart_center')
-# def smart_center():
-#     return render_template('smart_center.html')
-
-# @app.route('/data_center')
-# def data_center():
-#     return render_template('data_center.html')
-
-# @app.route('/main_info')
-# def main_info():
-#     return render_template('main_info.html')
-
-# def open_browser():
-#     webbrowser.open('http://127.0.0.1:5000/main_info')
-
-# if __name__ == '__main__':
-#     # 打开浏览器
-#     open_browser()
-#     # 运行 Flask 应用
-#     app.run(debug=True, use_reloader=False)
-
 from flask import Flask, render_template, redirect, url_for, request, jsonify, flash, session, make_response, send_file
-import os
-import io
-import zipfile
-import secrets
-import sqlite3
-import threading
-import webbrowser
-import csv
-import json
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import datetime
 from collections import defaultdict
 from urllib.parse import quote
+import os, csv, io, zipfile, secrets, sqlite3, threading, webbrowser
 
 SERVER_BOOT_ID = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')   # 本次启动唯一 ID
 
@@ -796,7 +741,7 @@ def upload_water_quality():
         writer.writerows(merged_rows)
     return jsonify({'success': True, 'msg': '上传并合并成功', 'rows': len(merged_rows)})
 
-# 下载数据模板接口
+# 下载水质数据模板接口
 @app.route('/api/water_quality/template')
 def download_water_quality_template():
     province = request.args.get('province')
@@ -896,7 +841,7 @@ def export_water_quality():
         as_attachment=True,
         download_name=filename  # 关键修改点
     )
-
+    
 # 鱼类数据导出接口
 @app.route('/api/fish/export')
 def export_fish_data():
@@ -917,6 +862,69 @@ def export_fish_data():
     # )
     return send_file(file_path, mimetype='text/csv', as_attachment=True, download_name=filename)
 
+
+# ====== 新增：鱼类数据上传与模板下载接口 ======
+FISH_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'Fish')
+FISH_HEADER = ['Species', 'Weight(g)', 'Length1(cm)', 'Length2(cm)', 'Length3(cm)', 'Height(cm)', 'Width(cm)']
+
+@app.route('/api/fish/template')
+def download_fish_template():
+    ranch = request.args.get('ranch', '').strip()
+    if not ranch:
+        return jsonify({'success': False, 'msg': '缺少牧场参数'}), 400
+    filename = f'Fish_{ranch}.csv'
+    header = ','.join(FISH_HEADER) + '\n'
+    response = make_response(header)
+    response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+    encoded_utf8 = quote(filename.encode('utf-8'))
+    encoded_rfc5987 = quote(filename, safe='')
+    content_disposition = (
+        f'attachment; filename="{encoded_utf8}"; '
+        f'filename*=UTF-8\'\'{encoded_rfc5987}'
+    )
+    response.headers['Content-Disposition'] = content_disposition
+    return response
+
+@app.route('/api/fish/upload', methods=['POST'])
+def upload_fish_data():
+    ranch = request.form.get('ranch', '').strip()
+    file = request.files.get('file')
+    if not ranch or not file:
+        return jsonify({'success': False, 'msg': '缺少参数'}), 400
+    filename = f'Fish_{ranch}.csv'
+    file_path = os.path.join(FISH_DIR, filename)
+    # 读取上传内容
+    try:
+        content = file.read().decode('utf-8-sig')
+    except Exception:
+        return jsonify({'success': False, 'msg': '文件读取失败，请上传UTF-8编码的CSV'}), 400
+    lines = [l for l in content.splitlines() if l.strip()]
+    if not lines or lines[0].replace(' ', '') != ','.join(FISH_HEADER).replace(' ', ''):
+        return jsonify({'success': False, 'msg': 'CSV首行格式不符'}), 400
+    upload_data = [tuple(row.split(',')) for row in lines[1:] if row.strip()]
+    # 校验每行字段数
+    for row in upload_data:
+        if len(row) != len(FISH_HEADER):
+            return jsonify({'success': False, 'msg': 'CSV数据行字段数不符'}), 400
+    # 读取原有数据
+    old_data = set()
+    if os.path.exists(file_path):
+        with open(file_path, encoding='utf-8') as f:
+            reader = csv.reader(f)
+            next(reader, None)
+            for row in reader:
+                if len(row) == len(FISH_HEADER):
+                    old_data.add(tuple(row))
+    # 合并去重
+    merged = old_data | set(upload_data)
+    merged_rows = list(merged)
+    merged_rows.sort()  # 可按需要排序
+    # 写回文件
+    with open(file_path, 'w', encoding='utf-8', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(FISH_HEADER)
+        writer.writerows(merged_rows)
+    return jsonify({'success': True, 'msg': '上传并合并成功', 'rows': len(merged_rows)})
 
 def open_browser():
     webbrowser.open('http://127.0.0.1:5000/login')

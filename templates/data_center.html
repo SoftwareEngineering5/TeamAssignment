@@ -12,7 +12,7 @@
                     <i class="fas fa-database me-2"></i>数据管理
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="#" id="uploadDataBtn">
+                    <li><a class="dropdown-item" href="#" id="uploadDataBtn" data-bs-toggle="modal" data-bs-target="#uploadFishModal">
                         <i class="fas fa-cloud-upload-alt me-2"></i>上传鱼类数据
                     </a></li>
                     <li><a class="dropdown-item" href="#" id="exportDataBtn" data-bs-toggle="modal" data-bs-target="#exportFishModal">
@@ -326,6 +326,51 @@
                 <div id="fishExportStatus" class="small text-muted mt-1"></div>
               </div>
               <button type="button" class="btn btn-success w-100" id="startFishExportBtn">导出</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 上传鱼类数据模态框 ====== -->
+    <div class="modal fade" id="uploadFishModal" tabindex="-1" aria-labelledby="uploadFishModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="uploadFishModalLabel">上传鱼类数据</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="fishUploadForm">
+              <div class="mb-3">
+                <label class="form-label">选择海洋牧场</label>
+                <select class="form-select" id="fishUploadRanchSelect" required>
+                  <option value="">请选择</option>
+                  <option value="山东青岛">山东青岛</option>
+                  <option value="浙江舟山">浙江舟山</option>
+                  <option value="福建厦门">福建厦门</option>
+                  <option value="广东湛江">广东湛江</option>
+                  <option value="辽宁大连">辽宁大连</option>
+                  <option value="河北秦皇岛">河北秦皇岛</option>
+                </select>
+              </div>
+              <div class="mb-3 d-flex justify-content-between align-items-center">
+                <button type="button" class="btn btn-outline-secondary" id="downloadFishTemplateBtn" disabled>
+                  <i class="fas fa-file-csv me-2"></i>下载模板
+                </button>
+                <span class="small text-muted">仅支持.csv文件</span>
+              </div>
+              <div class="mb-3">
+                <div id="fishUploadDropArea" class="border border-2 rounded p-4 text-center bg-light" style="cursor:pointer;">
+                  <i class="fas fa-cloud-upload-alt fa-2x mb-2"></i>
+                  <div>拖拽或点击选择CSV文件上传</div>
+                  <input type="file" id="fishUploadFileInput" accept=".csv" style="display:none;">
+                </div>
+              </div>
+              <div class="mb-3">
+                <div id="fishUploadStatus" class="small text-danger"></div>
+              </div>
+              <button type="submit" class="btn btn-success w-100" id="startFishUploadBtn" disabled>上传</button>
             </form>
           </div>
         </div>
@@ -725,6 +770,120 @@
             }).catch(() => {
                 status.textContent = '导出失败';
             });
+        });
+        
+        // ====== 鱼类数据上传功能 ======
+        const fishUploadRanchSelect = document.getElementById('fishUploadRanchSelect');
+        const downloadFishTemplateBtn = document.getElementById('downloadFishTemplateBtn');
+        const fishUploadDropArea = document.getElementById('fishUploadDropArea');
+        const fishUploadFileInput = document.getElementById('fishUploadFileInput');
+        const fishUploadStatus = document.getElementById('fishUploadStatus');
+        const startFishUploadBtn = document.getElementById('startFishUploadBtn');
+        let fishUploadFile = null;
+
+        // 选择牧场后启用模板下载按钮
+        fishUploadRanchSelect.addEventListener('change', function() {
+            downloadFishTemplateBtn.disabled = !this.value;
+            startFishUploadBtn.disabled = !this.value || !fishUploadFile;
+            fishUploadStatus.textContent = '';
+        });
+        // 下载模板
+        downloadFishTemplateBtn.addEventListener('click', function() {
+            const ranch = fishUploadRanchSelect.value;
+            if (!ranch) return;
+            const url = `/api/fish/template?ranch=${encodeURIComponent(ranch)}`;
+            fetch(url).then(async res => {
+                if (!res.ok) return;
+                const blob = await res.blob();
+                let filename = `Fish_${ranch}.csv`;
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            });
+        });
+        // 拖拽上传区域
+        fishUploadDropArea.addEventListener('click', () => fishUploadFileInput.click());
+        fishUploadDropArea.addEventListener('dragover', e => { e.preventDefault(); fishUploadDropArea.classList.add('bg-info'); });
+        fishUploadDropArea.addEventListener('dragleave', e => { e.preventDefault(); fishUploadDropArea.classList.remove('bg-info'); });
+        fishUploadDropArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            fishUploadDropArea.classList.remove('bg-info');
+            if (e.dataTransfer.files.length) {
+                fishUploadFileInput.files = e.dataTransfer.files;
+                handleFishFileChange();
+            }
+        });
+        fishUploadFileInput.addEventListener('change', handleFishFileChange);
+        function handleFishFileChange() {
+            const file = fishUploadFileInput.files[0];
+            if (!file) { fishUploadFile = null; startFishUploadBtn.disabled = true; return; }
+            if (!file.name.endsWith('.csv')) {
+                fishUploadStatus.textContent = '仅支持CSV文件';
+                fishUploadFile = null;
+                startFishUploadBtn.disabled = true;
+                return;
+            }
+            // 读取并校验格式
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const lines = e.target.result.split(/\r?\n/).filter(l => l.trim());
+                const header = 'Species,Weight(g),Length1(cm),Length2(cm),Length3(cm),Height(cm),Width(cm)';
+                if (!lines.length || lines[0].replace(/\s/g, '') !== header.replace(/\s/g, '')) {
+                    fishUploadStatus.textContent = 'CSV首行格式不符';
+                    fishUploadFile = null;
+                    startFishUploadBtn.disabled = true;
+                    return;
+                }
+                // 校验每行字段数
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].split(',').length !== 7) {
+                        fishUploadStatus.textContent = `第${i+1}行字段数不符`;
+                        fishUploadFile = null;
+                        startFishUploadBtn.disabled = true;
+                        return;
+                    }
+                }
+                fishUploadStatus.textContent = `已选择文件：${file.name}`;
+                fishUploadFile = file;
+                startFishUploadBtn.disabled = !fishUploadRanchSelect.value;
+            };
+            reader.readAsText(file, 'utf-8');
+        }
+        // 上传表单提交
+        document.getElementById('fishUploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!fishUploadFile || !fishUploadRanchSelect.value) return;
+            fishUploadStatus.textContent = '正在上传...';
+            startFishUploadBtn.disabled = true;
+            const formData = new FormData();
+            formData.append('ranch', fishUploadRanchSelect.value);
+            formData.append('file', fishUploadFile);
+            fetch('/api/fish/upload', {
+                method: 'POST',
+                body: formData
+            }).then(res => res.json()).then(data => {
+                if (data.success) {
+                    fishUploadStatus.textContent = '上传并合并成功，共 ' + data.rows + ' 条数据';
+                } else {
+                    fishUploadStatus.textContent = data.msg || '上传失败';
+                }
+                startFishUploadBtn.disabled = false;
+            }).catch(() => {
+                fishUploadStatus.textContent = '上传失败';
+                startFishUploadBtn.disabled = false;
+            });
+        });
+        // 打开模态框时重置状态
+        document.getElementById('uploadFishModal').addEventListener('show.bs.modal', function() {
+            fishUploadRanchSelect.value = '';
+            downloadFishTemplateBtn.disabled = true;
+            fishUploadFileInput.value = '';
+            fishUploadFile = null;
+            fishUploadStatus.textContent = '';
+            startFishUploadBtn.disabled = true;
         });
     </script>
 
