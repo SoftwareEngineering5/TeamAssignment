@@ -2,7 +2,30 @@
 
 {% block content %}
     <div class="container-fluid">
-        <h1 class="mb-4">数据中心</h1>
+        <!-- 新增数据管理下拉菜单 -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-4">数据中心</h1>
+            <div class="dropdown">
+                <button class="btn btn-primary dropdown-toggle" type="button" 
+                        id="dataManagementDropdown" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                    <i class="fas fa-database me-2"></i>数据管理
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#" id="uploadDataBtn">
+                        <i class="fas fa-cloud-upload-alt me-2"></i>上传新监测数据
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" id="exportDataBtn">
+                        <i class="fas fa-download me-2"></i>导出当前数据集
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" id="downloadChartBtn">
+                        <i class="fas fa-image me-2"></i>下载可视化图表
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+        
         
         <!-- 数据概览卡片 -->
         <div class="row mb-4">
@@ -285,12 +308,12 @@
         
         // 牧场与数据文件映射
         const ranchFileMap = {
-            0: 'Fish.csv',    // 山东青岛
-            1: 'Fish1.csv',   // 浙江舟山
-            2: 'Fish2.csv',   // 福建厦门
-            3: 'Fish3.csv',   // 广东湛江
-            4: 'Fish4.csv',   // 辽宁大连
-            5: 'Fish5.csv'    // 河北秦皇岛
+            0: './fish_data/Fish.csv',    // 山东青岛
+            1: './fish_data/Fish1.csv',   // 浙江舟山
+            2: './fish_data/Fish2.csv',   // 福建厦门
+            3: './fish_data/Fish3.csv',   // 广东湛江
+            4: './fish_data/Fish4.csv',   // 辽宁大连
+            5: './fish_data/Fish5.csv'    // 河北秦皇岛
         };
         
         // 牧场名称
@@ -517,6 +540,35 @@
                 }
             });
         }
+        
+        // 在现有脚本中添加下载功能
+        document.getElementById('downloadChartBtn').addEventListener('click', function() {
+            if (!fishRadarChart) {
+                alert('请先加载图表数据');
+                return;
+            }
+
+            // 创建临时canvas获取高清图像
+            const tempCanvas = document.createElement('canvas');
+            const originalCanvas = document.getElementById('fishRadarChart');
+            
+            // 设置高清分辨率
+            const scale = 2;
+            tempCanvas.width = originalCanvas.width * scale;
+            tempCanvas.height = originalCanvas.height * scale;
+            tempCanvas.style.width = originalCanvas.width + 'px';
+            tempCanvas.style.height = originalCanvas.height + 'px';
+            
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.scale(scale, scale);
+            tempCtx.drawImage(originalCanvas, 0, 0);
+
+            // 触发下载
+            const link = document.createElement('a');
+            link.download = `水质数据雷达图_${new Date().toISOString().slice(0,10)}.png`;
+            link.href = tempCanvas.toDataURL('image/png');
+            link.click();
+        });
         
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {

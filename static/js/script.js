@@ -299,3 +299,69 @@ function clearSectionTrendNoData() {
     myChart.clear();
     sectionTrendNoData = false;
 }
+
+// ===== 图表下载功能 =====
+// 下载断面时序折线图（ECharts）
+document.getElementById('downloadSectionChartBtn')?.addEventListener('click', function() {
+    const dom = document.getElementById('sectionTrendChart');
+    if (!dom) return;
+    const myChart = echarts.getInstanceByDom(dom);
+    if (!myChart) return;
+    // 导出为图片并嵌入元数据（文件名+生成时间）
+    const now = new Date();
+    const meta = `生成时间: ${now.toLocaleString()} | 用户: 未知`;
+    const dataUrl = myChart.getDataURL({
+        type: 'png',
+        pixelRatio: 2,
+        backgroundColor: '#fff',
+        excludeComponents: ['toolbox']
+    });
+    // 创建下载链接
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `断面时序图_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours()}${now.getMinutes()}${now.getSeconds()}.png`;
+    a.click();
+});
+
+document.getElementById('downloadTrendChartBtn')?.addEventListener('click', function() {
+    const dom = document.getElementById('sectionTrendChart');
+    if (!dom) return;
+    const myChart = echarts.getInstanceByDom(dom);
+    if (!myChart) return;
+    // 导出为图片并嵌入元数据（文件名+生成时间）
+    const now = new Date();
+    const meta = `生成时间: ${now.toLocaleString()} | 用户: 未知`;
+    const dataUrl = myChart.getDataURL({
+        type: 'png',
+        pixelRatio: 2,
+        backgroundColor: '#fff',
+        excludeComponents: ['toolbox']
+    });
+    // 创建下载链接
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `断面时序图_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours()}${now.getMinutes()}${now.getSeconds()}.png`;
+    a.click();
+});
+
+// 下载雷达图（Chart.js）
+document.getElementById('downloadRadarChartBtn')?.addEventListener('click', function() {
+    const canvas = document.getElementById('fishRadarChart');
+    if (!canvas) return;
+    // 元数据写入文件名
+    const now = new Date();
+    const meta = `生成时间: ${now.toLocaleString()} | 用户: 未知`;
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = `鱼类雷达图_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours()}${now.getMinutes()}${now.getSeconds()}.png`;
+    link.click();
+});
+document.getElementById('downloadRadarChartBtn2')?.addEventListener('click', function() {
+    const canvas = document.getElementById('fishRadarChart');
+    if (!canvas) return;
+    const now = new Date();
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = `鱼类雷达图_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours()}${now.getMinutes()}${now.getSeconds()}.png`;
+    link.click();
+});
