@@ -46,16 +46,18 @@
 #     app.run(debug=True, use_reloader=False)
 
 from flask import Flask, render_template, redirect, url_for, request, jsonify, flash, session, make_response, send_file
+import os
+import io
+import zipfile
+import secrets
+import sqlite3
+import threading
+import webbrowser
+import csv
+import json
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-import webbrowser
-import threading
-import os
-import sqlite3
-import secrets
-import csv
-import json
 from datetime import datetime
 from collections import defaultdict
 from urllib.parse import quote
@@ -822,6 +824,78 @@ def download_water_quality_template():
     response.headers['Content-Disposition'] = content_disposition
     
     return response
+
+# 水质数据导出接口
+@app.route('/api/water_quality/export')
+def export_water_quality():
+    province = request.args.get('province')
+    basin = request.args.get('basin')
+    section = request.args.get('section')
+    fmt = request.args.get('format', 'csv')
+    base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'water_quality')
+    
+    if not os.path.exists(base_dir):
+        return '数据目录不存在', 404
+
+    files_to_zip = []
+    
+    def walk_dir(root, rel_path=''):
+        for entry in os.listdir(root):
+            full_path = os.path.join(root, entry)
+            rel = os.path.join(rel_path, entry)
+            if os.path.isdir(full_path):
+                walk_dir(full_path, rel)
+            elif entry.endswith('.csv'):
+                files_to_zip.append((full_path, rel))
+
+    # 选择范围
+    zip_root = []
+    if province:
+        province_dir = os.path.join(base_dir, province)
+        if not os.path.exists(province_dir):
+            return '省份不存在', 404
+        if basin:
+            basin_dir = os.path.join(province_dir, basin)
+            if not os.path.exists(basin_dir):
+                return '流域不存在', 404
+            if section:
+                section_dir = os.path.join(basin_dir, section)
+                if not os.path.exists(section_dir):
+                    return '断面不存在', 404
+                # 只导出该断面下所有csv
+                walk_dir(section_dir, os.path.join(province, basin, section))
+                zip_root = [province, basin, section]
+            else:
+                # 导出该流域下所有断面
+                walk_dir(basin_dir, os.path.join(province, basin))
+                zip_root = [province, basin]
+        else:
+            # 导出该省所有流域
+            walk_dir(province_dir, province)
+            zip_root = [province]
+    else:
+        # 导出全部
+        walk_dir(base_dir, '')
+        zip_root = []
+    if not files_to_zip:
+        return '没有可导出的数据', 404
+
+    mem_zip = io.BytesIO()
+    with zipfile.ZipFile(mem_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for abs_path, rel_path in files_to_zip:
+            zf.write(abs_path, rel_path)
+    mem_zip.seek(0)
+
+    name_parts = zip_root + ['水质监测数据']
+    filename = '_'.join(name_parts) + '.zip'
+
+    # 修改send_file调用方式
+    return send_file(
+        mem_zip,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=filename  # 关键修改点
+    )
 
 def open_browser():
     webbrowser.open('http://127.0.0.1:5000/login')

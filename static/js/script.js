@@ -605,4 +605,117 @@ document.getElementById('startWaterUploadBtn')?.addEventListener('click', async 
     }
 });
 
+// ====== 水质数据导出三级联动与导出功能 ======
+function fillExportProvinceSelect() {
+    const select = document.getElementById('exportProvinceSelect');
+    select.innerHTML = '<option value="">请选择</option>';
+    for (const p of waterQualityData) {
+        select.innerHTML += `<option value="${p.province}">${p.province}</option>`;
+    }
+}
+function fillExportBasinSelect(province) {
+    const select = document.getElementById('exportBasinSelect');
+    select.innerHTML = '<option value="">请选择</option>';
+    if (!province) return;
+    const p = waterQualityData.find(x => x.province === province);
+    if (!p) return;
+    const basins = new Set();
+    for (const b of p.basins) {
+        if (b.basin) basins.add(b.basin);
+    }
+    for (const b of basins) {
+        select.innerHTML += `<option value="${b}">${b}</option>`;
+    }
+}
+function fillExportSectionSelect(province, basin) {
+    const select = document.getElementById('exportSectionSelect');
+    select.innerHTML = '<option value="">请选择</option>';
+    if (!province || !basin) return;
+    const p = waterQualityData.find(x => x.province === province);
+    if (!p) return;
+    for (const b of p.basins) {
+        if (b.basin === basin && b.section) {
+            select.innerHTML += `<option value="${b.section}">${b.section}</option>`;
+        }
+    }
+}
+function bindExportWaterSelectEvents() {
+    document.getElementById('exportProvinceSelect').addEventListener('change', function() {
+        fillExportBasinSelect(this.value);
+        fillExportSectionSelect(this.value, '');
+    });
+    document.getElementById('exportBasinSelect').addEventListener('change', function() {
+        const province = document.getElementById('exportProvinceSelect').value;
+        fillExportSectionSelect(province, this.value);
+    });
+}
+// 打开导出模态框时初始化
+const exportModal = document.getElementById('exportWaterModal');
+exportModal?.addEventListener('show.bs.modal', function() {
+    fillExportProvinceSelect();
+    fillExportBasinSelect('');
+    fillExportSectionSelect('', '');
+});
+bindExportWaterSelectEvents();
+
+// 导出按钮点击事件
+function confirmExportAll(msg, callback) {
+    if (window.confirm(msg)) callback();
+}
+document.getElementById('startWaterExportBtn')?.addEventListener('click', function() {
+    const province = document.getElementById('exportProvinceSelect').value;
+    const basin = document.getElementById('exportBasinSelect').value;
+    const section = document.getElementById('exportSectionSelect').value;
+    const format = document.getElementById('waterExportFormat').value;
+    let msg = '';
+    if (!province && !basin && !section) {
+        msg = '未选择任何筛选条件，是否导出所有水质监测数据？';
+    } else if (province && !basin && !section) {
+        msg = `未选择流域和断面，是否导出【${province}】的所有水质监测数据？`;
+    } else if (province && basin && !section) {
+        msg = `未选择断面，是否导出【${province}→${basin}】的所有水质监测数据？`;
+    }
+    const doExport = () => {
+        const params = new URLSearchParams();
+        if (province) params.append('province', province);
+        if (basin) params.append('basin', basin);
+        if (section) params.append('section', section);
+        params.append('format', format);
+        const url = `/api/water_quality/export?${params.toString()}`;
+        // 显示进度
+        const status = document.getElementById('waterExportStatus');
+        status.textContent = '正在导出...';
+        fetch(url).then(async res => {
+            if (!res.ok) {
+                status.textContent = '导出失败';
+                return;
+            }
+            const blob = await res.blob();
+            // 获取文件名
+            let filename = res.headers.get('Content-Disposition');
+            if (filename) {
+                const match = filename.match(/filename\*=UTF-8''(.+)/);
+                if (match) filename = decodeURIComponent(match[1]);
+                else filename = '水质监测数据.zip';
+            } else {
+                filename = '水质监测数据.zip';
+            }
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            status.textContent = '导出完成';
+        }).catch(() => {
+            status.textContent = '导出失败';
+        });
+    };
+    if (msg) {
+        confirmExportAll(msg, doExport);
+    } else {
+        doExport();
+    }
+});
+
 
