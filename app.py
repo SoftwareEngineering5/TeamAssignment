@@ -45,7 +45,7 @@
 #     # 运行 Flask 应用
 #     app.run(debug=True, use_reloader=False)
 
-from flask import Flask, render_template, redirect, url_for, request, jsonify, flash, session
+from flask import Flask, render_template, redirect, url_for, request, jsonify, flash, session, make_response, send_file
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -58,6 +58,7 @@ import csv
 import json
 from datetime import datetime
 from collections import defaultdict
+from urllib.parse import quote
 
 SERVER_BOOT_ID = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')   # 本次启动唯一 ID
 
@@ -741,6 +742,86 @@ def section_data():
                             data[k] = row[k]
                 timeseries.append(data)
     return jsonify(timeseries)
+
+# 水质数据上传接口
+@app.route('/api/water_quality/upload', methods=['POST'])
+def upload_water_quality():
+    province = request.form.get('province')
+    basin = request.form.get('basin')
+    section = request.form.get('section')
+    file = request.files.get('file')
+    if not (province and basin and section and file):
+        return '缺少参数', 400
+    # 读取上传内容
+    content = file.read().decode('utf-8-sig')
+    lines = [l for l in content.splitlines() if l.strip()]
+    if len(lines) < 2:
+        return 'CSV内容不足', 400
+    header = '省份,流域,断面名称,监测时间,水质类别,水温(℃),pH(无量纲),溶解氧(mg/L),电导率(μS/cm),浊度(NTU),高锰酸盐指数(mg/L),氨氮(mg/L),总磷(mg/L),总氮(mg/L),叶绿素α(mg/L),藻密度(cells/L),站点情况'
+    if lines[0].replace(' ', '') != header.replace(' ', ''):
+        return 'CSV首行格式不符', 400
+    upload_data = [row.split(',') for row in lines[1:]]
+    # 路径拼接
+    base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'water_quality')
+    if not os.path.exists(base_dir):
+        base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'water_quality')
+    section_dir = os.path.join(base_dir, province, basin, section, '2021-04')
+    os.makedirs(section_dir, exist_ok=True)
+    csv_path = os.path.join(section_dir, f'{section}.csv')
+    # 读取原有数据
+    old_data = []
+    if os.path.exists(csv_path):
+        with open(csv_path, encoding='utf-8') as f:
+            reader = csv.reader(f)
+            old_header = next(reader, None)
+            for row in reader:
+                old_data.append(row)
+    # 合并数据，按监测时间升序，时间冲突用上传数据覆盖
+    # 以监测时间为key
+    def get_time(row):
+        return row[3]  # 监测时间
+    merged = {}
+    for row in old_data:
+        merged[get_time(row)] = row
+    for row in upload_data:
+        merged[get_time(row)] = row  # 覆盖
+    merged_rows = list(merged.values())
+    merged_rows.sort(key=get_time)
+    # 写回文件
+    with open(csv_path, 'w', encoding='utf-8', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(header.split(','))
+        writer.writerows(merged_rows)
+    return jsonify({'success': True, 'msg': '上传并合并成功', 'rows': len(merged_rows)})
+
+# 下载数据模板接口
+@app.route('/api/water_quality/template')
+def download_water_quality_template():
+    province = request.args.get('province')
+    basin = request.args.get('basin')
+    section = request.args.get('section')
+    if not (province and basin and section):
+        return jsonify({'success': False, 'msg': '参数不完整'}), 400
+
+    header = '省份,流域,断面名称,监测时间,水质类别,水温(℃),pH(无量纲),溶解氧(mg/L),电导率(μS/cm),浊度(NTU),高锰酸盐指数(mg/L),氨氮(mg/L),总磷(mg/L),总氮(mg/L),叶绿素α(mg/L),藻密度(cells/L),站点情况\n'
+    
+    response = make_response(header)
+    response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+    
+    filename = f'{section}.csv'
+    
+    # 双重编码方案兼容所有浏览器
+    encoded_utf8 = quote(filename.encode('utf-8'))  # 传统编码方式
+    encoded_rfc5987 = quote(filename, safe='')       # RFC 5987编码
+    
+    # 同时提供两种编码方案
+    content_disposition = (
+        f'attachment; filename="{encoded_utf8}"; '
+        f'filename*=UTF-8\'\'{encoded_rfc5987}'
+    )
+    response.headers['Content-Disposition'] = content_disposition
+    
+    return response
 
 def open_browser():
     webbrowser.open('http://127.0.0.1:5000/login')

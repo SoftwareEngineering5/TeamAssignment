@@ -362,4 +362,247 @@ document.getElementById('downloadTrendChartBtn')?.addEventListener('click', func
     a.click();
 });
 
+// ====== 水质数据上传三级联动与拖拽上传 ======
+// 省市流域断面数据初始化
+let uploadWaterData = {};
+
+// ====== 下载CSV模板按钮逻辑 ======
+// 创建并插入按钮（如果页面已有可复用则跳过）
+let downloadTemplateBtn = document.getElementById('downloadWaterTemplateBtn');
+if (!downloadTemplateBtn) {
+    downloadTemplateBtn = document.createElement('button');
+    downloadTemplateBtn.id = 'downloadWaterTemplateBtn';
+    downloadTemplateBtn.type = 'button';
+    downloadTemplateBtn.className = 'btn btn-outline-secondary w-100 mb-2';
+    downloadTemplateBtn.style.display = 'none';
+    downloadTemplateBtn.innerHTML = '<i class="fas fa-download me-2"></i>下载CSV模板';
+    // 插入到上传表单下方
+    const form = document.getElementById('waterUploadForm');
+    form.parentNode.insertBefore(downloadTemplateBtn, form.nextSibling);
+}
+
+function updateDownloadTemplateBtnVisibility() {
+    const province = document.getElementById('uploadProvinceSelect').value;
+    const basin = document.getElementById('uploadBasinSelect').value;
+    const section = document.getElementById('uploadSectionSelect').value;
+    if (province && basin && section) {
+        downloadTemplateBtn.style.display = '';
+    } else {
+        downloadTemplateBtn.style.display = 'none';
+    }
+}
+
+// 绑定三级联动时同步按钮显示
+function bindUploadWaterSelectEvents() {
+    document.getElementById('uploadProvinceSelect').addEventListener('change', function() {
+        fillUploadBasinSelect(this.value);
+        fillUploadSectionSelect(this.value, '');
+        updateDownloadTemplateBtnVisibility();
+    });
+    document.getElementById('uploadBasinSelect').addEventListener('change', function() {
+        fillUploadSectionSelect(document.getElementById('uploadProvinceSelect').value, this.value);
+        updateDownloadTemplateBtnVisibility();
+    });
+    document.getElementById('uploadSectionSelect').addEventListener('change', function() {
+        updateDownloadTemplateBtnVisibility();
+    });
+}
+
+// 下载模板按钮点击事件
+if (downloadTemplateBtn) {
+    downloadTemplateBtn.addEventListener('click', function() {
+        const province = document.getElementById('uploadProvinceSelect').value;
+        const basin = document.getElementById('uploadBasinSelect').value;
+        const section = document.getElementById('uploadSectionSelect').value;
+        if (!(province && basin && section)) return;
+
+        const url = `/api/water_quality/template?province=${encodeURIComponent(province)}&basin=${encodeURIComponent(basin)}&section=${encodeURIComponent(section)}`;
+        
+        fetch(url).then(res => {
+            if (!res.ok) throw new Error('模板下载失败');
+            
+            // 从响应头中提取文件名
+            const contentDisposition = res.headers.get('Content-Disposition');
+            let filename = section + '.csv'; // 默认文件名
+            
+            // 解析RFC 5987编码的文件名
+            if (contentDisposition) {
+                const utf8Filename = contentDisposition.match(/filename\*=(?:UTF-8'')?(.+)/i);
+                if (utf8Filename) {
+                    filename = decodeURIComponent(utf8Filename[1]);
+                } else {
+                    const legacyFilename = contentDisposition.match(/filename="(.+?)"/i);
+                    if (legacyFilename) {
+                        filename = decodeURIComponent(legacyFilename[1]);
+                    }
+                }
+            }
+
+            return res.blob().then(blob => ({ blob, filename }));
+        }).then(({ blob, filename }) => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename; // 显式设置文件名
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                URL.revokeObjectURL(a.href);
+                a.remove();
+            }, 100);
+        }).catch(() => {
+            alert('模板下载失败，请稍后重试');
+        });
+    });
+}
+
+// 获取省份、流域、断面数据（可复用waterQualityData）
+function fillUploadProvinceSelect() {
+    const select = document.getElementById('uploadProvinceSelect');
+    select.innerHTML = '<option value="">请选择</option>';
+    for (const p of waterQualityData) {
+        select.innerHTML += `<option value="${p.province}">${p.province}</option>`;
+    }
+}
+function fillUploadBasinSelect(province) {
+    const select = document.getElementById('uploadBasinSelect');
+    select.innerHTML = '<option value="">请选择</option>';
+    if (!province) return;
+    const p = waterQualityData.find(x => x.province === province);
+    if (!p) return;
+    const basins = new Set();
+    for (const b of p.basins) {
+        if (b.basin) basins.add(b.basin);
+    }
+    for (const b of basins) {
+        select.innerHTML += `<option value="${b}">${b}</option>`;
+    }
+}
+function fillUploadSectionSelect(province, basin) {
+    const select = document.getElementById('uploadSectionSelect');
+    select.innerHTML = '<option value="">请选择</option>';
+    if (!province || !basin) return;
+    const p = waterQualityData.find(x => x.province === province);
+    if (!p) return;
+    for (const b of p.basins) {
+        if (b.basin === basin && b.section) {
+            select.innerHTML += `<option value="${b.section}">${b.section}</option>`;
+        }
+    }
+}
+// 绑定三级联动
+function bindUploadWaterSelectEvents() {
+    document.getElementById('uploadProvinceSelect').addEventListener('change', function() {
+        fillUploadBasinSelect(this.value);
+        fillUploadSectionSelect(this.value, '');
+    });
+    document.getElementById('uploadBasinSelect').addEventListener('change', function() {
+        fillUploadSectionSelect(document.getElementById('uploadProvinceSelect').value, this.value);
+    });
+}
+// 拖拽上传区域
+const dropZone = document.getElementById('waterDropZone');
+const fileInput = document.getElementById('waterFileInput');
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => {e.preventDefault(); dropZone.classList.add('bg-light');});
+dropZone.addEventListener('dragleave', e => {e.preventDefault(); dropZone.classList.remove('bg-light');});
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('bg-light');
+    if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        document.getElementById('waterDropText').textContent = fileInput.files[0].name;
+    }
+});
+fileInput.addEventListener('change', function() {
+    if (fileInput.files.length) {
+        document.getElementById('waterDropText').textContent = fileInput.files[0].name;
+    } else {
+        document.getElementById('waterDropText').textContent = '拖拽或点击选择CSV文件';
+    }
+});
+// 打开模态框时初始化
+const uploadModal = document.getElementById('uploadWaterModal');
+uploadModal?.addEventListener('show.bs.modal', function() {
+    fillUploadProvinceSelect();
+    fillUploadBasinSelect('');
+    fillUploadSectionSelect('', '');
+    document.getElementById('waterDropText').textContent = '拖拽或点击选择CSV文件';
+    fileInput.value = '';
+});
+bindUploadWaterSelectEvents();
+
+// ====== 水质数据上传校验与提交 ======
+document.getElementById('startWaterUploadBtn')?.addEventListener('click', async function() {
+    const province = document.getElementById('uploadProvinceSelect').value;
+    const basin = document.getElementById('uploadBasinSelect').value;
+    const section = document.getElementById('uploadSectionSelect').value;
+    const fileInput = document.getElementById('waterFileInput');
+    const status = document.getElementById('waterUploadStatus');
+    const progressBar = document.getElementById('waterUploadBar');
+    const progressBox = document.getElementById('waterUploadProgress');
+    if (!province || !basin || !section) {
+        status.textContent = '请选择省份、流域和断面';
+        return;
+    }
+    if (!fileInput.files.length) {
+        status.textContent = '请上传CSV文件';
+        return;
+    }
+    const file = fileInput.files[0];
+    if (!file.name.endsWith('.csv')) {
+        status.textContent = '仅支持CSV文件';
+        return;
+    }
+    // 读取并校验CSV内容
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    const header = '省份,流域,断面名称,监测时间,水质类别,水温(℃),pH(无量纲),溶解氧(mg/L),电导率(μS/cm),浊度(NTU),高锰酸盐指数(mg/L),氨氮(mg/L),总磷(mg/L),总氮(mg/L),叶绿素α(mg/L),藻密度(cells/L),站点情况';
+    if (lines.length < 2 || lines[0].replace(/\s/g,'') !== header.replace(/\s/g,'')) {
+        status.textContent = 'CSV格式不正确，首行应为：' + header;
+        return;
+    }
+    // 校验每行字段数
+    for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',');
+        if (cols.length < 17) {
+            status.textContent = `第${i+1}行字段数不足17列`;
+            return;
+        }
+    }
+    // 通过校验，准备上传
+    status.textContent = '校验通过，正在上传...';
+    progressBox.style.display = '';
+    progressBar.style.width = '0%';
+    progressBar.textContent = '0%';
+    try {
+        const formData = new FormData();
+        formData.append('province', province);
+        formData.append('basin', basin);
+        formData.append('section', section);
+        formData.append('file', file);
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/water_quality/upload');
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = Math.round(e.loaded / e.total * 100);
+                progressBar.style.width = percent + '%';
+                progressBar.textContent = percent + '%';
+            }
+        };
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                status.textContent = '上传并合并成功';
+            } else {
+                status.textContent = '上传失败: ' + xhr.responseText;
+            }
+        };
+        xhr.onerror = function() {
+            status.textContent = '上传出错';
+        };
+        xhr.send(formData);
+    } catch (e) {
+        status.textContent = '上传异常: ' + e;
+    }
+});
+
 

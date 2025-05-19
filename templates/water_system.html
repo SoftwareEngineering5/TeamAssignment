@@ -26,21 +26,34 @@
               <div class="modal-body">
                 <form id="waterUploadForm">
                   <div class="mb-3">
-                    <label for="waterFileInput" class="form-label">选择CSV文件</label>
-                    <input class="form-control" type="file" id="waterFileInput" accept=".csv">
+                    <label class="form-label">选择省份</label>
+                    <select class="form-select" id="uploadProvinceSelect"></select>
                   </div>
                   <div class="mb-3">
-                    <label class="form-label">数据冲突处理</label>
-                    <select class="form-select" id="waterConflictPolicy">
-                      <option value="overwrite">覆盖</option>
-                      <option value="skip">跳过</option>
-                    </select>
+                    <label class="form-label">选择流域</label>
+                    <select class="form-select" id="uploadBasinSelect"></select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">选择断面</label>
+                    <select class="form-select" id="uploadSectionSelect"></select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">上传CSV文件</label>
+                    <div id="waterDropZone" class="border border-primary rounded p-3 text-center" style="cursor:pointer;background:#f8f9fa;">
+                      <span id="waterDropText">拖拽或点击选择CSV文件</span>
+                      <input type="file" id="waterFileInput" accept=".csv" style="display:none;">
+                    </div>
                   </div>
                   <div class="mb-3">
                     <div id="waterUploadProgress" class="progress" style="height: 20px; display:none;">
                       <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" id="waterUploadBar">0%</div>
                     </div>
                     <div id="waterUploadStatus" class="small text-muted mt-1"></div>
+                  </div>
+                  <div class="mb-3 text-end" id="waterTemplateBtnBox">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="downloadWaterTemplateBtn">
+                      <i class="fas fa-file-csv me-1"></i>下载CSV模板
+                    </button>
                   </div>
                   <button type="button" class="btn btn-primary w-100" id="startWaterUploadBtn">开始上传</button>
                 </form>
