@@ -13,6 +13,7 @@ SERVER_BOOT_ID = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')   # 本次启动�
 from alerts import alerts_bp  # 导入报警模块的蓝图
 from water_data import water_data_bp  # 导入水质数据模块的蓝图
 from fish_data import fish_data_bp  # 导入鱼类数据模块的蓝图
+from ai_api import ai_api_bp  # 导入人工智能模块的蓝图
 
 app = Flask(__name__)
 
@@ -20,6 +21,7 @@ app = Flask(__name__)
 app.register_blueprint(alerts_bp)
 app.register_blueprint(water_data_bp)
 app.register_blueprint(fish_data_bp)
+app.register_blueprint(ai_api_bp)
 
 # 每次启动都换新密钥
 app.config['SECRET_KEY'] = secrets.token_hex(16) + SERVER_BOOT_ID
@@ -385,30 +387,6 @@ def data_center():
 @login_required
 def main_info():
     return render_template('main_info.html')
-
-# 配置 OpenAI 客户端
-client = OpenAI(
-    api_key="bce-v3/ALTAK-0IgCdhsnLXwRKZadr2muI/5259a057d17909fabb25d37013e6af4ccc66a6d9",  # 你的 API Key
-    base_url="https://qianfan.baidubce.com/v2",  # 千帆域名
-    default_headers={"appid": "app-AMipy7QU"}   # 你的 App ID
-)
-
-# 处理用户输入并调用 API 返回响应
-@app.route('/ask', methods=['POST'])
-def ask():
-    user_input = request.form['user_input']
-    
-    # 调用千帆 OpenAI API
-    completion = client.chat.completions.create(
-        model="ernie-4.0-turbo-8k", 
-        messages=[{'role': 'system', 'content': 'You are a helpful assistant.'},
-                  {'role': 'user', 'content': user_input}]
-    )
-
-    # 获取 API 的响应结果
-    response_message = completion.choices[0].message.content  # 使用 .content 而非 ['content']
-
-    return jsonify({'response': response_message})
 
 def open_browser():
     webbrowser.open('http://127.0.0.1:5000/login')
