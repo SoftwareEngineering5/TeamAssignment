@@ -6,6 +6,7 @@ from datetime import datetime
 from collections import defaultdict
 from urllib.parse import quote
 import os, csv, io, zipfile, secrets, sqlite3, threading, webbrowser
+from openai import OpenAI
 
 SERVER_BOOT_ID = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')   # 本次启动唯一 ID
 
@@ -925,6 +926,30 @@ def upload_fish_data():
         writer.writerow(FISH_HEADER)
         writer.writerows(merged_rows)
     return jsonify({'success': True, 'msg': '上传并合并成功', 'rows': len(merged_rows)})
+
+# 配置 OpenAI 客户端
+client = OpenAI(
+    api_key="bce-v3/ALTAK-0IgCdhsnLXwRKZadr2muI/5259a057d17909fabb25d37013e6af4ccc66a6d9",  # 你的 API Key
+    base_url="https://qianfan.baidubce.com/v2",  # 千帆域名
+    default_headers={"appid": "app-AMipy7QU"}   # 你的 App ID
+)
+
+# 处理用户输入并调用 API 返回响应
+@app.route('/ask', methods=['POST'])
+def ask():
+    user_input = request.form['user_input']
+    
+    # 调用千帆 OpenAI API
+    completion = client.chat.completions.create(
+        model="ernie-4.0-turbo-8k", 
+        messages=[{'role': 'system', 'content': 'You are a helpful assistant.'},
+                  {'role': 'user', 'content': user_input}]
+    )
+
+    # 获取 API 的响应结果
+    response_message = completion.choices[0].message.content  # 使用 .content 而非 ['content']
+
+    return jsonify({'response': response_message})
 
 def open_browser():
     webbrowser.open('http://127.0.0.1:5000/login')
