@@ -104,6 +104,11 @@
             chatDiv.innerHTML += "<p><strong>你:</strong> " + userInput + "</p>";
             chatDiv.scrollTop = chatDiv.scrollHeight;  // 滚动到最底部
 
+            // 显示“机器人正在思考中……”
+            const thinkingMessage = "<p><strong>机器人:</strong> 正在思考中……</p>";
+            chatDiv.innerHTML += thinkingMessage;
+            chatDiv.scrollTop = chatDiv.scrollHeight;  // 滚动到最底部
+
             // 调用 API 获取智能问答结果
             fetch('/ask', {
                 method: 'POST',
@@ -114,9 +119,25 @@
             })
             .then(response => response.json())
             .then(data => {
-                // 显示智能问答结果
-                chatDiv.innerHTML += "<p><strong>机器人:</strong> " + data.response + "</p>";
-                chatDiv.scrollTop = chatDiv.scrollHeight;  // 滚动到最底部
+                // 获取机器人的回答
+                const responseText = data.response;
+
+                // 找到并替换“正在思考中……”消息为机器人的实际回答
+                const botResponseElement = chatDiv.querySelector('p:last-child');
+                botResponseElement.innerHTML = "<strong>机器人:</strong> " + "";
+
+                // 逐字输出
+                let i = 0;
+                const interval = setInterval(() => {
+                    botResponseElement.innerHTML += responseText.charAt(i);
+                    chatDiv.scrollTop = chatDiv.scrollHeight;  // 滚动到最底部
+                    i++;
+
+                    // 如果全部文字显示完，清除定时器
+                    if (i >= responseText.length) {
+                        clearInterval(interval);
+                    }
+                }, 50);  // 每50毫秒显示一个字
             })
             .catch(error => {
                 console.error('Error:', error);
