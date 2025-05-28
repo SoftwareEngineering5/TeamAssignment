@@ -88,8 +88,19 @@
         <!-- 系统告警信息 -->
         <div class="col-md-6">
             <div class="card">
-                <div class="card-header">
+                <!-- <div class="card-header">
                     <i class="fas fa-bell me-2"></i>系统告警信息
+                </div>
+                    <button class="btn btn-outline-danger btn-sm clear-btn" onclick="clearAllAlerts()" id="clearBtn">
+                        <i class="fas fa-trash me-1"></i>清除所有
+                    </button> -->
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-bell me-2"></i>系统告警信息
+                    </div>
+                    <button class="btn btn-outline-danger btn-sm clear-btn" onclick="deleteAllAlertsHandler(getCurrentRanchName())" id="clearBtn">
+                        <i class="fas fa-trash me-1"></i>清除所有
+                    </button>
                 </div>
                 <div class="card-body" id="alertsContainer" style="max-height: 300px; overflow-y: auto;">
                     <!-- 动态生成的告警信息 -->
@@ -335,6 +346,27 @@
                 return null;
             }
         },
+
+        // 删除所有警报
+        deleteAllAlerts: async function(ranchName) {
+            try {
+                // 调用API删除所有警报
+                const response = await fetch(`/api/alerts/${encodeURIComponent(ranchName)}/all`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) {
+                    console.error('删除所有警报失败:', response.statusText);
+                    return null;
+                }
+                
+                const result = await response.json();
+                return result.alerts; // 返回空数组
+            } catch (error) {
+                console.error('删除所有警报时出错:', error);
+                return null;
+            }
+        },
         
         // 初始化所有牧场的警报文件
         initAlertsFiles: async function(ranchNames) {
@@ -378,93 +410,406 @@
         }
     }
 
+    // 删除所有警报的处理函数
+    async function deleteAllAlertsHandler(ranchName) {
+        // 检查牧场名称是否有效
+        if (!ranchName) {
+            alert('请先选择一个牧场');
+            return;
+        }
+        
+        // 确认删除
+        if (confirm(`确定要删除 "${ranchName}" 牧场的所有警报吗？此操作不可撤销！`)) {
+            try {
+                // 显示加载状态
+                const clearBtn = document.getElementById('clearBtn');
+                if (clearBtn) {
+                    clearBtn.disabled = true;
+                    clearBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>删除中...';
+                }
+                
+                // 调用API删除所有警报
+                const result = await csvOperations.deleteAllAlerts(ranchName);
+                
+                if (result !== null) {
+                    // 删除成功，更新当前显示
+                    const currentIndex = document.getElementById('marineFarmSelect').value;
+                    if (currentIndex !== '') {
+                        await updateRanchContent(currentIndex);
+                    }
+                    
+                    // 显示成功提示
+                    alert('所有警报已成功删除！');
+                } else {
+                    // 删除失败
+                    alert('删除失败，请重试');
+                }
+            } catch (error) {
+                console.error('删除所有警报时出错:', error);
+                alert('删除过程中出现错误，请重试');
+            } finally {
+                // 恢复按钮状态
+                const clearBtn = document.getElementById('clearBtn');
+                if (clearBtn) {
+                    clearBtn.disabled = false;
+                    clearBtn.innerHTML = '<i class="fas fa-trash me-1"></i>清除所有';
+                }
+            }
+        }
+    }
+
+    // 获取当前选中牧场名称的函数
+    function getCurrentRanchName() {
+        const selectedIndex = localStorage.getItem('selectedMarineFarm');
+        const selectedRanch = marineRanches[selectedIndex];
+        return selectedRanch.name;
+    }
+
     // 弹窗警报系统
     const alertPopupSystem = {
         // 存储已经显示过的警报ID，防止重复弹窗
         shownAlerts: new Set(),
         
-        // 根据警报级别显示不同样式的弹窗
-        showAlertPopup(alert) {
-            // 创建警报的唯一ID，基于类型和时间戳
-            const alertId = `${alert.type}-${alert.timestamp}`;
+        // 批量处理警报的配置
+        batchConfig: {
+            maxSingleAlerts: 2,      // 最多单独显示2个警报
+            batchDelay: 500,         // 批量收集延迟时间(ms)
+            priorityLevels: {        // 优先级配置
+                'danger': 3,
+                'warning': 2,
+                'info': 1
+            }
+        },
+        
+        // 待处理的警报队列
+        pendingAlerts: [],
+        batchTimer: null,
+        
+        // 主要的警报显示方法 - 支持批量处理
+        showAlerts(alerts) {
+            if (!Array.isArray(alerts)) {
+                alerts = [alerts];
+            }
             
-            // 如果这个警报已经显示过，则不再显示
-            if (this.shownAlerts.has(alertId)) {
+            // 过滤掉已显示的警报
+            const newAlerts = alerts.filter(alert => {
+                const alertId = `${alert.message}-${alert.timestamp}`;
+                if (this.shownAlerts.has(alertId)) {
+                    return false;
+                }
+                this.shownAlerts.add(alertId);
+                return true;
+            });
+            
+            if (newAlerts.length === 0) {
                 return;
             }
             
-            // 将这个警报ID添加到已显示集合中
-            this.shownAlerts.add(alertId);
-            
-            // 根据警报级别设置弹窗样式和行为
-            let popupOptions = {};
-            switch(alert.level) {
-                case 'danger':
-                    popupOptions = {
-                        icon: 'error',
-                        title: `严重警报：${alert.type}`,
-                        text: alert.message,
-                        confirmButtonText: '我已了解',
-                        confirmButtonColor: '#dc3545',
-                        timer: 0, // 不自动关闭
-                        backdrop: `rgba(220, 53, 69, 0.4)`,
-                    };
-                    break;
-                case 'warning':
-                    popupOptions = {
-                        icon: 'warning',
-                        title: `警告：${alert.type}`,
-                        text: alert.message,
-                        confirmButtonText: '确认',
-                        confirmButtonColor: '#ffc107',
-                        timer: 120000, // 120秒后自动关闭
-                        timerProgressBar: true,
-                        backdrop: `rgba(255, 193, 7, 0.4)`,
-                    };
-                    break;
-                case 'info':
-                default:
-                    popupOptions = {
-                        icon: 'info',
-                        title: `提示：${alert.type}`,
-                        text: alert.message,
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 60000, // 60秒后自动关闭
-                        timerProgressBar: true,
-                    };
-                    break;
+            // 根据警报数量选择显示策略
+            if (newAlerts.length === 1) {
+                // 单个警报直接显示
+                this.showSingleAlert(newAlerts[0]);
+            } else if (newAlerts.length <= this.batchConfig.maxSingleAlerts) {
+                // 少量警报逐个显示，但有延迟
+                this.showSequentialAlerts(newAlerts);
+            } else {
+                // 大量警报合并显示
+                this.showBatchAlert(newAlerts);
             }
-            
-            // 创建一个简易的自定义弹窗
+        },
+        
+        // 显示单个警报
+        showSingleAlert(alert) {
+            const popupOptions = this.getAlertOptions(alert);
             this.showCustomPopup(popupOptions);
-                
-            // 同时在控制台记录警报信息
-            console.warn(`警报: ${popupOptions.title} - ${popupOptions.text}`);
-    
-            // 对于危险级别的警报，还可以添加声音提示
+            
+            // 危险警报播放声音
             if (alert.level === 'danger') {
                 this.playAlertSound();
             }
         },
         
-        // 播放警报声音
-        playAlertSound() {
-            try {
-                const audio = new Audio('/assets/sounds/alert.mp3');
-                audio.play();
-            } catch (e) {
-                console.error('无法播放警报声音:', e);
+        // 顺序显示多个警报（带延迟）
+        showSequentialAlerts(alerts) {
+            // 按优先级排序
+            const sortedAlerts = this.sortAlertsByPriority(alerts);
+            
+            sortedAlerts.forEach((alert, index) => {
+                setTimeout(() => {
+                    this.showSingleAlert(alert);
+                }, index * 1000); // 每个警报间隔1秒
+            });
+        },
+        
+        // 批量显示警报（合并在一个弹窗中）
+        showBatchAlert(alerts) {
+            // 按优先级分组
+            const groupedAlerts = this.groupAlertsByLevel(alerts);
+            const sortedAlerts = this.sortAlertsByPriority(alerts);
+            
+            // 统计信息
+            const stats = {
+                danger: groupedAlerts.danger?.length || 0,
+                warning: groupedAlerts.warning?.length || 0,
+                info: groupedAlerts.info?.length || 0,
+                total: alerts.length
+            };
+            
+            // 确定最高优先级
+            const highestLevel = stats.danger > 0 ? 'danger' : 
+                            stats.warning > 0 ? 'warning' : 'info';
+            
+            // 创建批量弹窗
+            this.showBatchPopup(sortedAlerts, stats, highestLevel);
+            
+            // 如有危险警报，播放声音
+            if (stats.danger > 0) {
+                this.playAlertSound();
             }
         },
         
-        // 清除已显示的警报记录（例如当用户切换到新的牧场时）
-        clearShownAlerts() {
-            this.shownAlerts.clear();
+        // 创建批量警报弹窗
+        showBatchPopup(alerts, stats, level) {
+            try {
+                const popup = document.createElement('div');
+                popup.style.cssText = `
+                    position: fixed;
+                    z-index: 9999;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    padding: 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                    min-width: 400px;
+                    max-width: 600px;
+                    max-height: 70vh;
+                    overflow-y: auto;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                `;
+                
+                // 根据最高优先级设置样式
+                const styles = this.getBatchPopupStyles(level);
+                popup.style.backgroundColor = styles.bgColor;
+                popup.style.borderLeft = styles.borderLeft;
+                popup.style.color = styles.textColor;
+                
+                // 构建内容
+                let content = `
+                    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 10px;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 18px;">
+                                ${this.getBatchTitle(stats, level)}
+                            </h3>
+                            <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">
+                                ${this.getBatchSummary(stats)}
+                            </div>
+                        </div>
+                        <button id="closeBatchPopup" style="background: none; border: none; font-size: 20px; cursor: pointer; opacity: 0.6; margin-left: 20px;">&times;</button>
+                    </div>
+                    
+                    <div style="max-height: 300px; overflow-y: auto;">
+                `;
+                
+                // 添加警报列表
+                alerts.slice(0, 10).forEach((alert, index) => {
+                    const alertStyles = this.getAlertItemStyles(alert.level);
+                    content += `
+                        <div style="margin-bottom: 8px; padding: 10px; border-radius: 4px; font-size: 14px; ${alertStyles}">
+                            <div style="font-weight: bold; margin-bottom: 4px;">
+                                ${this.getAlertIcon(alert.level)} ${alert.type}
+                            </div>
+                            <div>${alert.message}</div>
+                            <div style="font-size: 11px; opacity: 0.7; margin-top: 4px;">${alert.timestamp}</div>
+                        </div>
+                    `;
+                });
+                
+                // 如果警报太多，显示省略信息
+                if (alerts.length > 10) {
+                    content += `
+                        <div style="text-align: center; padding: 10px; font-style: italic; opacity: 0.8;">
+                            ... 还有 ${alerts.length - 10} 条警报未显示
+                        </div>
+                    `;
+                }
+                
+                content += `
+                    </div>
+                    
+                    <div style="text-align: right; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0,0,0,0.1);">
+                        <button id="viewAllAlerts" style="padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                            查看所有警报
+                        </button>
+                        <button id="confirmBatchPopup" style="padding: 8px 16px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            我已知晓
+                        </button>
+                    </div>
+                `;
+                
+                popup.innerHTML = content;
+                
+                // 添加遮罩层
+                const overlay = document.createElement('div');
+                overlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0,0,0,0.5);
+                    z-index: 9998;
+                `;
+                
+                // 添加到DOM
+                document.body.appendChild(overlay);
+                document.body.appendChild(popup);
+                
+                // 绑定事件
+                const closeHandler = () => {
+                    document.body.removeChild(popup);
+                    document.body.removeChild(overlay);
+                };
+                
+                document.getElementById('closeBatchPopup').addEventListener('click', closeHandler);
+                document.getElementById('confirmBatchPopup').addEventListener('click', closeHandler);
+                
+                // 查看所有警报按钮
+                document.getElementById('viewAllAlerts').addEventListener('click', () => {
+                    closeHandler();
+                    // 这里可以触发显示警报详情页面的事件
+                    this.showAllAlertsDetail(alerts);
+                });
+                
+                // 点击遮罩层关闭
+                overlay.addEventListener('click', closeHandler);
+                
+            } catch (e) {
+                console.error('创建批量警报弹窗失败:', e);
+            }
         },
         
-        // 创建一个简易的自定义弹窗（当SweetAlert2不可用时）
+        // 获取警报选项配置
+        getAlertOptions(alert) {
+            switch(alert.level) {
+                case 'danger':
+                    return {
+                        icon: 'error',
+                        title: `严重警报：${alert.type}`,
+                        text: alert.message,
+                        confirmButtonText: '我已了解',
+                        confirmButtonColor: '#dc3545',
+                        timer: 0,
+                    };
+                case 'warning':
+                    return {
+                        icon: 'warning',
+                        title: `警告：${alert.type}`,
+                        text: alert.message,
+                        confirmButtonText: '确认',
+                        confirmButtonColor: '#ffc107',
+                        timer: 120000,
+                    };
+                default:
+                    return {
+                        icon: 'info',
+                        title: `提示：${alert.type}`,
+                        text: alert.message,
+                        timer: 60000,
+                    };
+            }
+        },
+        
+        // 按优先级排序警报
+        sortAlertsByPriority(alerts) {
+            return alerts.sort((a, b) => {
+                const priorityA = this.batchConfig.priorityLevels[a.level] || 0;
+                const priorityB = this.batchConfig.priorityLevels[b.level] || 0;
+                return priorityB - priorityA; // 降序排列
+            });
+        },
+        
+        // 按级别分组警报
+        groupAlertsByLevel(alerts) {
+            return alerts.reduce((groups, alert) => {
+                const level = alert.level || 'info';
+                if (!groups[level]) groups[level] = [];
+                groups[level].push(alert);
+                return groups;
+            }, {});
+        },
+        
+        // 获取批量弹窗样式
+        getBatchPopupStyles(level) {
+            switch(level) {
+                case 'danger':
+                    return {
+                        bgColor: '#f8d7da',
+                        borderLeft: '5px solid #dc3545',
+                        textColor: '#721c24'
+                    };
+                case 'warning':
+                    return {
+                        bgColor: '#fff3cd',
+                        borderLeft: '5px solid #ffc107',
+                        textColor: '#856404'
+                    };
+                default:
+                    return {
+                        bgColor: '#d1ecf1',
+                        borderLeft: '5px solid #17a2b8',
+                        textColor: '#0c5460'
+                    };
+            }
+        },
+        
+        // 获取警报项样式
+        getAlertItemStyles(level) {
+            switch(level) {
+                case 'danger':
+                    return 'background-color: rgba(220, 53, 69, 0.1); border-left: 3px solid #dc3545;';
+                case 'warning':
+                    return 'background-color: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107;';
+                default:
+                    return 'background-color: rgba(23, 162, 184, 0.1); border-left: 3px solid #17a2b8;';
+            }
+        },
+        
+        // 获取警报图标
+        getAlertIcon(level) {
+            switch(level) {
+                case 'danger': return '🚨';
+                case 'warning': return '⚠️';
+                default: return 'ℹ️';
+            }
+        },
+        
+        // 获取批量标题
+        getBatchTitle(stats, level) {
+            if (stats.danger > 0) {
+                return `⚠️ 发现 ${stats.total} 条重要警报`;
+            } else if (stats.warning > 0) {
+                return `📋 收到 ${stats.total} 条系统警报`;
+            } else {
+                return `📝 ${stats.total} 条系统提醒`;
+            }
+        },
+        
+        // 获取批量摘要
+        getBatchSummary(stats) {
+            let summary = [];
+            if (stats.danger > 0) summary.push(`${stats.danger}条严重警报`);
+            if (stats.warning > 0) summary.push(`${stats.warning}条警告`);
+            if (stats.info > 0) summary.push(`${stats.info}条提醒`);
+            return summary.join(' · ');
+        },
+        
+        // 显示所有警报详情（可以跳转到警报页面或展开详情）
+        showAllAlertsDetail(alerts) {
+            console.log('显示所有警报详情:', alerts);
+        },
+        
+        // 创建自定义弹窗
         showCustomPopup(options) {
             try {
                 // 创建弹窗元素
@@ -528,6 +873,19 @@
             } catch (e) {
                 console.error('创建自定义弹窗失败:', e);
             }
+        },
+        
+        playAlertSound() {
+            try {
+                const audio = new Audio('/assets/sounds/alert.mp3');
+                audio.play();
+            } catch (e) {
+                console.error('无法播放警报声音:', e);
+            }
+        },
+        
+        clearShownAlerts() {
+            this.shownAlerts.clear();
         }
     };
 
@@ -1020,10 +1378,11 @@
                     );
                 });
                 
-                // 为新的警报显示弹窗
-                newAlerts.forEach(alert => {
-                    alertPopupSystem.showAlertPopup(alert);
-                });
+                // // 为新的警报显示弹窗
+                // newAlerts.forEach(alert => {
+                //     alertPopupSystem.showAlertPopup(alert);
+                // });
+                alertPopupSystem.showAlerts(newAlerts);
                 
                 // 更新警报数量
                 document.getElementById('alertCount').textContent = `${allAlerts.length}个`;
@@ -1371,10 +1730,11 @@
                     );
                 });
                 
-                // 为新的警报显示弹窗
-                newAlerts.forEach(alert => {
-                    alertPopupSystem.showAlertPopup(alert);
-                });
+                // // 为新的警报显示弹窗
+                // newAlerts.forEach(alert => {
+                //     alertPopupSystem.showAlertPopup(alert);
+                // });
+                alertPopupSystem.showAlerts(newAlerts);
                 
                 // 更新警报数量
                 document.getElementById('alertCount').textContent = `${allAlerts.length}个`;

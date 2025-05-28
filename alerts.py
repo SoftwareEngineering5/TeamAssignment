@@ -163,6 +163,28 @@ def delete_alert(ranch_name, alert_index):
         return jsonify({'success': True, 'alerts': alerts})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+# 删除所有警报
+@alerts_bp.route('/api/alerts/<ranch_name>/all', methods=['DELETE'])
+def delete_all_alerts(ranch_name):
+    """删除指定牧场的所有警报"""
+    try:
+        # 构建CSV文件路径
+        file_path = os.path.join(ALERTS_DIR, f"{ranch_name.replace(' ', '_')}_alerts.csv")
+        
+        # 如果文件不存在，返回错误
+        if not os.path.exists(file_path):
+            return jsonify({'error': '警报文件不存在'}), 404
+        
+        # 清空文件，只保留表头
+        with open(file_path, 'w', encoding='utf-8', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['警报类别', '警报级别', '警报内容', '时间戳'])
+        
+        return jsonify({'success': True, 'message': '所有警报已删除', 'alerts': []})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 # 初始化所有牧场的警报文件
 @alerts_bp.route('/api/init_alerts', methods=['POST'])
