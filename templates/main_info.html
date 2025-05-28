@@ -532,6 +532,635 @@
     };
 
 /*
+    * 水质警报处理
+*/
+
+    // 全局水质数据存储
+    let globalWaterQualityData = {};
+
+    // 水质异常检测规则
+    const waterQualityAlertRules = {
+        // 严重污染 - 危险级别 (劣V类)
+        severePollution: {
+            conditions: [
+                { parameter: 'dissolvedOxygen', threshold: 2, operator: '<', unit: 'mg/L' },
+                { parameter: 'cod', threshold: 40, operator: '>', unit: 'mg/L' },
+                { parameter: 'ammoniaNitrogen', threshold: 2.0, operator: '>', unit: 'mg/L' },
+                { parameter: 'totalPhosphorus', threshold: 0.4, operator: '>', unit: 'mg/L' },
+                { parameter: 'totalNitrogen', threshold: 2.0, operator: '>', unit: 'mg/L' }
+            ],
+            level: 'danger',
+            type: '严重污染',
+            getMessage: (data, param) => {
+                if (param === 'dissolvedOxygen') {
+                    return `严重缺氧警告！溶解氧浓度${data.dissolvedOxygen}mg/L，水体严重缺氧，水生生物面临死亡风险！`;
+                } else if (param === 'cod') {
+                    return `有机污染严重！化学需氧量${data.cod}mg/L，水体有机污染严重超标！`;
+                } else if (param === 'ammoniaNitrogen') {
+                    return `氨氮严重超标！浓度${data.ammoniaNitrogen}mg/L，可能导致水体富营养化！`;
+                } else if (param === 'totalPhosphorus') {
+                    return `总磷严重超标！浓度${data.totalPhosphorus}mg/L，水体富营养化严重！`;
+                } else if (param === 'totalNitrogen') {
+                    return `总氮严重超标！浓度${data.totalNitrogen}mg/L，水体营养盐严重过量！`;
+                }
+            }
+        },
+        // 重度污染 - 警告级别 (V类水质)
+        heavyPollution: {
+            conditions: [
+                { parameter: 'dissolvedOxygen', threshold: 3, operator: '<', unit: 'mg/L' },
+                { parameter: 'dissolvedOxygen', threshold: 2, operator: '>=', unit: 'mg/L' },
+                { parameter: 'cod', threshold: 30, operator: '>', unit: 'mg/L' },
+                { parameter: 'cod', threshold: 40, operator: '<=', unit: 'mg/L' },
+                { parameter: 'ammoniaNitrogen', threshold: 1.5, operator: '>', unit: 'mg/L' },
+                { parameter: 'ammoniaNitrogen', threshold: 2.0, operator: '<=', unit: 'mg/L' },
+                { parameter: 'totalPhosphorus', threshold: 0.2, operator: '>', unit: 'mg/L' },
+                { parameter: 'totalPhosphorus', threshold: 0.4, operator: '<=', unit: 'mg/L' }
+            ],
+            level: 'warning',
+            type: '重度污染',
+            getMessage: (data, param) => {
+                if (param === 'dissolvedOxygen') {
+                    return `溶解氧偏低警告：当前${data.dissolvedOxygen}mg/L，水体开始缺氧。`;
+                } else if (param === 'cod') {
+                    return `化学需氧量超标警告：当前${data.cod}mg/L，水体有机污染较重。`;
+                } else if (param === 'ammoniaNitrogen') {
+                    return `氨氮超标警告：浓度${data.ammoniaNitrogen}mg/L，水体污染加重。`;
+                } else if (param === 'totalPhosphorus') {
+                    return `总磷超标警告：浓度${data.totalPhosphorus}mg/L，可能引起水体富营养化。`;
+                }
+            }
+        },
+        // 中度污染 - 注意级别 (IV类水质)
+        moderatePollution: {
+            conditions: [
+                { parameter: 'dissolvedOxygen', threshold: 5, operator: '<', unit: 'mg/L' },
+                { parameter: 'dissolvedOxygen', threshold: 3, operator: '>=', unit: 'mg/L' },
+                { parameter: 'cod', threshold: 20, operator: '>', unit: 'mg/L' },
+                { parameter: 'cod', threshold: 30, operator: '<=', unit: 'mg/L' },
+                { parameter: 'ammoniaNitrogen', threshold: 1.0, operator: '>', unit: 'mg/L' },
+                { parameter: 'ammoniaNitrogen', threshold: 1.5, operator: '<=', unit: 'mg/L' },
+                { parameter: 'totalPhosphorus', threshold: 0.1, operator: '>', unit: 'mg/L' },
+                { parameter: 'totalPhosphorus', threshold: 0.2, operator: '<=', unit: 'mg/L' },
+                { parameter: 'conductivity', threshold: 1000, operator: '>', unit: 'μS/cm' },
+                { parameter: 'turbidity', threshold: 5, operator: '>', unit: 'NTU' }
+            ],
+            level: 'info',
+            type: '中度污染',
+            getMessage: (data, param) => {
+                if (param === 'dissolvedOxygen') {
+                    return `溶解氧偏低提醒：当前${data.dissolvedOxygen}mg/L，建议关注水体含氧量。`;
+                } else if (param === 'cod') {
+                    return `化学需氧量偏高：当前${data.cod}mg/L，水体有机物含量较高。`;
+                } else if (param === 'ammoniaNitrogen') {
+                    return `氨氮偏高提醒：浓度${data.ammoniaNitrogen}mg/L，水质开始下降。`;
+                } else if (param === 'totalPhosphorus') {
+                    return `总磷偏高提醒：浓度${data.totalPhosphorus}mg/L，需要关注。`;
+                } else if (param === 'conductivity') {
+                    return `电导率偏高：当前${data.conductivity}μS/cm，水体矿化度较高。`;
+                } else if (param === 'turbidity') {
+                    return `浊度偏高提醒：当前${data.turbidity}NTU，水体透明度下降。`;
+                }
+            }
+        },
+        // pH异常
+        pHAnomaly: {
+            highPH: 9,
+            lowPH: 6,
+            level: 'warning',
+            type: 'pH异常',
+            getMessage: (data) => {
+                if (data.pH > 9) {
+                    return `pH值过高警告：当前pH=${data.pH}，水体呈强碱性，可能影响水生生物生存。`;
+                } else if (data.pH < 6) {
+                    return `pH值过低警告：当前pH=${data.pH}，水体呈酸性，可能腐蚀性较强。`;
+                }
+                return null;
+            }
+        },
+        // 温度异常
+        temperatureAnomaly: {
+            highTemp: 35, // 高温阈值
+            lowTemp: 0,   // 低温阈值
+            level: 'info',
+            type: '水温异常',
+            getMessage: (data) => {
+                if (data.waterTemp > 35) {
+                    return `水温过高提醒：当前水温${data.waterTemp}°C，可能影响水体溶氧能力。`;
+                } else if (data.waterTemp < 0) {
+                    return `水温过低提醒：当前水温${data.waterTemp}°C，水体可能结冰。`;
+                }
+                return null;
+            }
+        }
+    };
+
+    // 检测水质异常
+    function detectWaterQualityAnomalies(waterData) {
+        const alerts = [];
+        
+        // 检查严重污染
+        waterQualityAlertRules.severePollution.conditions.forEach(condition => {
+            const value = waterData[condition.parameter];
+            if (value !== undefined && checkCondition(value, condition.threshold, condition.operator)) {
+                alerts.push({
+                    level: waterQualityAlertRules.severePollution.level,
+                    type: waterQualityAlertRules.severePollution.type,
+                    message: waterQualityAlertRules.severePollution.getMessage(waterData, condition.parameter),
+                    timestamp: new Date().toISOString()
+                });
+            }
+        });
+
+        // 检查重度污染
+        waterQualityAlertRules.heavyPollution.conditions.forEach(condition => {
+            const value = waterData[condition.parameter];
+            if (value !== undefined && checkCondition(value, condition.threshold, condition.operator)) {
+                alerts.push({
+                    level: waterQualityAlertRules.heavyPollution.level,
+                    type: waterQualityAlertRules.heavyPollution.type,
+                    message: waterQualityAlertRules.heavyPollution.getMessage(waterData, condition.parameter),
+                    timestamp: new Date().toISOString()
+                });
+            }
+        });
+
+        // 检查中度污染
+        waterQualityAlertRules.moderatePollution.conditions.forEach(condition => {
+            const value = waterData[condition.parameter];
+            if (value !== undefined && checkCondition(value, condition.threshold, condition.operator)) {
+                alerts.push({
+                    level: waterQualityAlertRules.moderatePollution.level,
+                    type: waterQualityAlertRules.moderatePollution.type,
+                    message: waterQualityAlertRules.moderatePollution.getMessage(waterData, condition.parameter),
+                    timestamp: new Date().toISOString()
+                });
+            }
+        });
+
+        // 检查pH异常
+        if (waterData.pH > waterQualityAlertRules.pHAnomaly.highPH || 
+            waterData.pH < waterQualityAlertRules.pHAnomaly.lowPH) {
+            const pHMessage = waterQualityAlertRules.pHAnomaly.getMessage(waterData);
+            
+            if (pHMessage) {
+                alerts.push({
+                    level: waterQualityAlertRules.pHAnomaly.level,
+                    type: waterQualityAlertRules.pHAnomaly.type,
+                    message: pHMessage,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+
+        // 检查温度异常
+        if (waterData.waterTemp > waterQualityAlertRules.temperatureAnomaly.highTemp || 
+            waterData.waterTemp < waterQualityAlertRules.temperatureAnomaly.lowTemp) {
+            const tempMessage = waterQualityAlertRules.temperatureAnomaly.getMessage(waterData);
+            
+            if (tempMessage) {
+                alerts.push({
+                    level: waterQualityAlertRules.temperatureAnomaly.level,
+                    type: waterQualityAlertRules.temperatureAnomaly.type,
+                    message: tempMessage,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+
+        return alerts;
+    }
+
+    // 辅助函数：检查条件
+    function checkCondition(value, threshold, operator) {
+        switch (operator) {
+            case '>':
+                return value > threshold;
+            case '<':
+                return value < threshold;
+            case '>=':
+                return value >= threshold;
+            case '<=':
+                return value <= threshold;
+            case '==':
+                return value == threshold;
+            default:
+                return false;
+        }
+    }
+
+    // 海洋牧场与水质监测点的映射配置
+    const marineRanchWaterQualityMapping = {
+        '山东青岛': {
+            files: ['../static/water_quality/山东省/黄河流域/王台大桥(流泽桥)/2021-04/王台大桥(流泽桥).csv', 
+            '../static/water_quality/山东省/黄河流域/贺小庄/2021-04/贺小庄.csv'],
+            priority: 0 // 优先使用第一个监测点
+        },
+        '浙江舟山': {
+            files: ['../static/water_quality/浙江省/太湖流域/新塘/2021-04/新塘.csv', 
+            '../static/water_quality/浙江省/太湖流域/城西大桥/2021-04/城西大桥.csv'], 
+            priority: 0
+        },
+        '福建厦门': {
+            files: ['../static/water_quality/福建省/浙闽片河流/江口桥/2021-04/江口桥.csv'],
+            priority: 0
+        },
+        '广东湛江': {
+            files: ['../static/water_quality/广东省/珠江流域/赤坎水厂(塘口取水口)/2021-04/赤坎水厂(塘口取水口).csv'],
+            priority: 0
+        },
+        '辽宁大连': {
+            files: ['../static/water_quality/辽宁省/辽河流域/三台子/2021-04/三台子.csv', 
+            '../static/water_quality/辽宁省/辽河流域/红石碑入海前/2021-04/红石碑入海前.csv', 
+            '../static/water_quality/辽宁省/辽河流域/蒲石河大桥/2021-04/蒲石河大桥.csv'],
+            priority: 0
+        },
+        '河北秦皇岛': {
+            files: ['../static/water_quality/河北省/海河流域/戴河口/2021-04/戴河口.csv', 
+            '../static/water_quality/河北省/海河流域/汤河口/2021-04/汤河口.csv', 
+            '../static/water_quality/河北省/海河流域/洋河口/2021-04/洋河口.csv'],
+            priority: 0
+        }
+    };
+
+    // 从CSV文件加载水质数据
+    async function loadWaterQualityFromCSV(ranchName) {
+        try {
+            const mapping = marineRanchWaterQualityMapping[ranchName];
+            if (!mapping) {
+                console.warn(`未找到海洋牧场 ${ranchName} 的水质数据映射配置`);
+                return null;
+            }
+
+            // 尝试加载所有关联的CSV文件，取第一个成功的
+            let waterQualityData = null;
+            let loadedFromFile = null;
+
+            // 优先加载主要监测点的数据
+            const priorityFile = mapping.files[mapping.priority];
+            try {
+                waterQualityData = await loadSingleWaterQualityCSV(priorityFile);
+                if (waterQualityData) {
+                    loadedFromFile = priorityFile;
+                    console.log(`从主要监测点加载水质数据: ${priorityFile}`);
+                }
+            } catch (error) {
+                console.warn(`加载主要监测点数据失败 (${priorityFile}):`, error.message);
+            }
+
+            // 如果主要监测点数据加载失败，尝试其他监测点
+            if (!waterQualityData) {
+                for (const filePath of mapping.files) {
+                    if (filePath === priorityFile) continue; // 跳过已尝试的主要监测点
+
+                    try {
+                        waterQualityData = await loadSingleWaterQualityCSV(filePath);
+                        if (waterQualityData) {
+                            loadedFromFile = filePath;
+                            console.log(`从备用监测点加载水质数据: ${filePath}`);
+                            break;
+                        }
+                    } catch (error) {
+                        console.warn(`加载备用监测点数据失败 (${filePath}):`, error.message);
+                    }
+                }
+            }
+
+            if (waterQualityData) {
+                // 添加海洋牧场信息和数据源信息
+                waterQualityData.ranchName = ranchName;
+                waterQualityData.dataSource = loadedFromFile;
+                waterQualityData.allSources = mapping.files;
+                return waterQualityData;
+            } else {
+                console.error(`所有监测点数据加载失败: ${ranchName}`);
+                return null;
+            }
+            
+        } catch (error) {
+            console.error(`加载水质数据失败 (${ranchName}):`, error);
+            return null;
+        }
+    }
+
+    // 加载单个CSV文件的水质数据
+    async function loadSingleWaterQualityCSV(filePath) {
+        const response = await fetch(filePath);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const csvText = await response.text();
+        const lines = csvText.split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+            throw new Error('CSV文件无有效数据行');
+        }
+        
+        // 解析表头
+        const headers = lines[0].split(',').map(h => h.trim());
+        
+        // 解析最新的一行数据（假设最后一行是最新数据）
+        const latestDataLine = lines[lines.length - 1].trim();
+        if (!latestDataLine) {
+            throw new Error('最新数据行为空');
+        }
+        
+        const values = latestDataLine.split(',').map(v => v.trim());
+        
+        // 验证数据完整性 - 根据新格式调整为17列
+        if (values.length < 17) {
+            throw new Error(`数据列数不足，期望17列，实际${values.length}列`);
+        }
+        
+        // 解析监测时间（格式：04-01 04:00）
+        const monitoringTime = values[3];
+        let timestamp;
+        try {
+            // 假设是当前年份，将 "04-01 04:00" 转换为完整日期
+            const currentYear = new Date().getFullYear();
+            const [dateStr, timeStr] = monitoringTime.split(' ');
+            const [month, day] = dateStr.split('-');
+            const [hour, minute] = timeStr.split(':');
+            timestamp = new Date(currentYear, parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute)).toISOString();
+        } catch (error) {
+            timestamp = new Date().toISOString();
+            console.warn('监测时间解析失败，使用当前时间:', error);
+        }
+        
+        // 辅助函数：安全解析数值，处理 '*' 等特殊值
+        function parseNumericValue(value, defaultValue = 0) {
+            if (value === '*' || value === '' || value === undefined) {
+                return null; // 用 null 表示无效数据
+            }
+            const parsed = parseFloat(value);
+            return isNaN(parsed) ? defaultValue : parsed;
+        }
+        
+        // 映射CSV数据到水质监测参数（按新的列顺序）
+        const waterQualityData = {
+            province: values[0] || '未知',              // 省份
+            watershed: values[1] || '未知',             // 流域
+            location: values[2] || '未知',              // 断面名称
+            qualityCategory: values[4] || '未知',       // 水质类别
+            waterTemp: parseNumericValue(values[5]),    // 水温(℃)
+            pH: parseNumericValue(values[6], 7),        // pH(无量纲)
+            dissolvedOxygen: parseNumericValue(values[7]), // 溶解氧(mg/L)
+            conductivity: parseNumericValue(values[8]), // 电导率(μS/cm)
+            turbidity: parseNumericValue(values[9]),    // 浊度(NTU)
+            cod: parseNumericValue(values[10]),         // 高锰酸盐指数(mg/L)
+            ammoniaNitrogen: parseNumericValue(values[11]), // 氨氮(mg/L)
+            totalPhosphorus: parseNumericValue(values[12]), // 总磷(mg/L)
+            totalNitrogen: parseNumericValue(values[13]),   // 总氮(mg/L)
+            timestamp: timestamp,                       // 标准化时间戳
+            rawData: values // 保存原始数据以供调试
+        };
+        
+        return waterQualityData;
+    }
+
+    // 获取所有海洋牧场的水质数据
+    async function fetchMarineRanchWaterQualityData(marineRanches) {
+        console.log('开始获取所有海洋牧场的水质数据...');
+        
+        const waterQualityDataPromises = marineRanches.map(async (ranch) => {
+            try {
+                console.log(`正在加载 ${ranch.name} 的水质数据...`);
+                const data = await loadWaterQualityFromCSV(ranch.name);
+                
+                if (data) {
+                    // 添加海洋牧场的基本信息
+                    return { 
+                        ...data, 
+                        name: ranch.name,
+                        province: ranch.province,
+                        city: ranch.city,
+                        coordinates: ranch.exactLocation
+                    };
+                } else {
+                    console.warn(`${ranch.name} 的水质数据加载失败`);
+                    return null;
+                }
+            } catch (error) {
+                console.error(`获取 ${ranch.name} 水质数据时出错:`, error);
+                return null;
+            }
+        });
+        
+        const results = await Promise.all(waterQualityDataPromises);
+        const validResults = results.filter(data => data !== null);
+        
+        console.log(`成功加载 ${validResults.length}/${marineRanches.length} 个海洋牧场的水质数据`);
+        return validResults;
+    }
+
+    // 获取指定海洋牧场的所有监测点数据
+    async function getAllWaterQualityDataForRanch(ranchName) {
+        try {
+            const mapping = marineRanchWaterQualityMapping[ranchName];
+            if (!mapping) {
+                console.warn(`未找到海洋牧场 ${ranchName} 的水质数据映射配置`);
+                return [];
+            }
+
+            const allDataPromises = mapping.files.map(async (filePath, index) => {
+                try {
+                    const data = await loadSingleWaterQualityCSV(filePath);
+                    return {
+                        ...data,
+                        monitoringPoint: filePath.split('/').pop().replace('.csv', ''),
+                        filePath: filePath,
+                        isPrimary: index === mapping.priority
+                    };
+                } catch (error) {
+                    console.warn(`加载监测点数据失败 (${filePath}):`, error.message);
+                    return null;
+                }
+            });
+
+            const results = await Promise.all(allDataPromises);
+            return results.filter(data => data !== null);
+
+        } catch (error) {
+            console.error(`获取 ${ranchName} 所有监测点数据失败:`, error);
+            return [];
+        }
+    }
+
+    // 更新水质警报
+    async function updateWaterQualityAlerts(selectedRanchIndex) {
+        const waterQualityData = Object.values(globalWaterQualityData);
+        
+        if (selectedRanchIndex !== null && selectedRanchIndex !== '') {
+            const selectedRanch = marineRanches[selectedRanchIndex];
+            const ranchWaterQuality = waterQualityData.find(w => w.name === selectedRanch.name);
+            
+            if (ranchWaterQuality) {
+                // 检测水质异常
+                const waterQualityAlerts = detectWaterQualityAnomalies(ranchWaterQuality);
+                
+                // 获取上一次的警报
+                let previousAlerts = [];
+                try {
+                    previousAlerts = await csvOperations.loadAlertsFromCSV(selectedRanch.name);
+                } catch (error) {
+                    console.error("获取历史水质警报失败:", error);
+                }
+                
+                // 将水质警报更新到CSV文件
+                const allAlerts = await csvOperations.updateAlertsInCSV(selectedRanch.name, waterQualityAlerts);
+                
+                // 识别新的警报（当前检测到但不在历史记录中的警报）
+                const newAlerts = waterQualityAlerts.filter(alert => {
+                    // 检查历史记录中是否已有同类型的警报
+                    return !previousAlerts.some(prevAlert => 
+                        prevAlert.type === alert.type && 
+                        prevAlert.level === alert.level && 
+                        prevAlert.message === alert.message
+                    );
+                });
+                
+                // 为新的警报显示弹窗
+                newAlerts.forEach(alert => {
+                    alertPopupSystem.showAlertPopup(alert);
+                });
+                
+                // 更新警报数量
+                document.getElementById('alertCount').textContent = `${allAlerts.length}个`;
+                
+                // 更新警报显示
+                const alertsContainer = document.getElementById('alertsContainer');
+                alertsContainer.innerHTML = '';
+                // 如果没有任何警报，显示正常状态
+                if (allAlerts.length === 0) {
+                    alertsContainer.innerHTML = '<div class="alert alert-success">当前无告警信息，系统运行正常。</div>';
+                } else {
+                    allAlerts.forEach((alert, index) => {
+                        const alertDiv = `
+                            <div class="alert alert-${alert.level}">
+                                <strong>${alert.type}：</strong> ${alert.message}
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">${new Date(alert.timestamp).toLocaleString()}</small>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteAlertHandler('${selectedRanch.name}', ${index})">
+                                        <i class="fas fa-times"></i> 删除
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        alertsContainer.innerHTML += alertDiv;
+                    });
+                }
+                
+                // // 更新水质信息显示
+                // updateWaterQualityDisplay(ranchWaterQuality);
+            }
+        }
+    }
+
+    // 更新水质信息显示
+    function updateWaterQualityDisplay(waterQualityData) {
+        // 更新水质状态显示
+        const waterQualityStatusElement = document.getElementById('waterQualityStatus');
+        if (waterQualityStatusElement) {
+            let statusClass = 'text-success';
+            let statusText = '优良';
+            
+            // 根据水质类别确定状态
+            switch (waterQualityData.qualityCategory) {
+                case 'I类':
+                case 'II类':
+                    statusClass = 'text-success';
+                    statusText = '优良';
+                    break;
+                case 'III类':
+                    statusClass = 'text-warning';
+                    statusText = '一般';
+                    break;
+                case 'IV类':
+                case 'V类':
+                    statusClass = 'text-danger';
+                    statusText = '较差';
+                    break;
+                default:
+                    statusClass = 'text-muted';
+                    statusText = '未知';
+            }
+            
+            waterQualityStatusElement.innerHTML = `
+                <i class="fas fa-tint ${statusClass}"></i> 
+                水质${waterQualityData.qualityCategory} - ${statusText} | 
+                温度: ${waterQualityData.waterTemp}°C | 
+                pH: ${waterQualityData.pH} | 
+                溶解氧: ${waterQualityData.dissolvedOxygen}mg/L
+            `;
+        }
+    }
+
+    // 初始化水质监测
+    async function initWaterQualityMonitoring() {
+        try {
+            console.log('开始初始化水质监测...');
+            
+            // 获取初始水质数据
+            const waterQualityData = await fetchMarineRanchWaterQualityData(marineRanches);
+            
+            // 存储到全局变量
+            waterQualityData.forEach(data => {
+                globalWaterQualityData[data.name] = data;
+            });
+
+            console.log('全局水质数据:', globalWaterQualityData);
+            
+            // 如果有选中的牧场，立即更新警报
+            const selectedIndex = localStorage.getItem('selectedMarineFarm');
+            if (selectedIndex !== null && selectedIndex !== '') {
+                await updateWaterQualityAlerts(selectedIndex);
+            }
+            
+            // 定期更新水质数据（每30分钟，因为水质变化相对较慢）
+            setInterval(async () => {
+                console.log('定期更新水质数据...');
+                const newWaterQualityData = await fetchMarineRanchWaterQualityData(marineRanches);
+                newWaterQualityData.forEach(data => {
+                    globalWaterQualityData[data.name] = data;
+                });
+                
+                // 更新当前选中牧场的警报
+                const currentIndex = document.getElementById('marineFarmSelect').value;
+                if (currentIndex !== '') {
+                    await updateWaterQualityAlerts(currentIndex);
+                }
+            }, 1800000); // 30分钟
+            
+            console.log('水质监测初始化完成');
+            
+        } catch (error) {
+            console.error('初始化水质监测失败:', error);
+        }
+    }
+
+    // // 更新水质警报
+    // async function updateWaterQualityAlerts(selectedRanchIndex) {
+
+    // }
+
+    // // 初始化水质数据
+    // async function initWaterQualityMonitoring() {
+    //     // try {
+    //     //     // 调用API获取水质数据
+    //     //     const response = await fetch('/api/water_quality');
+    //     //     if (!response.ok) {
+    //     //         console.error('加载水质数据失败:', response.statusText);
+    //     //         return;
+    //     //     }
+            
+    //     //     globalWaterQualityData = await response.json();
+    //     // } catch (error) {
+    //     //     console.error('加载水质数据时出错:', error);
+    //     // }
+    // }
+
+/*
     * 天气警报处理
 */
 
@@ -789,6 +1418,8 @@
             weatherData.forEach(data => {
                 globalWeatherData[data.name] = data;
             });
+
+            console.log('全局天气数据:', globalWeatherData);
             
             // 如果有选中的牧场，立即更新警报
             const selectedIndex = localStorage.getItem('selectedMarineFarm');
@@ -914,6 +1545,7 @@
         
         // 初始化天气监测
         await initWeatherMonitoring();
+        await initWaterQualityMonitoring();
         // 可补充：初始化其他监测（水质数据、鱼群数据、设备）
     });
 
