@@ -249,6 +249,63 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- 鱼类数据预测 -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <i class="fas fa-chart-line me-2"></i>数据预测
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row mb-3">
+                                            <div class="col-md-4">
+                                                <label for="predictionMonths" class="form-label">预测时长：</label>
+                                                <select class="form-select" id="predictionMonths">
+                                                    <option value="3">3个月后</option>
+                                                    <option value="6">6个月后</option>
+                                                    <option value="12">12个月后</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4 d-flex align-items-end">
+                                                <button id="predictBtn" class="btn btn-primary">
+                                                    <i class="fas fa-calculator me-2"></i>开始预测
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 预测结果展示 -->
+                                        <div id="predictionResults" class="mt-3" style="display: none;">
+                                            <h5>预测结果（预测日期：<span id="predictionDate"></span>）</h5>
+                                            <div class="table-responsive">
+                                                <table class="table table-bordered">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>指标</th>
+                                                            <th>当前平均值</th>
+                                                            <th>预测值</th>
+                                                            <th>增长率</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="predictionTableBody">
+                                                        <!-- 预测结果将通过JavaScript动态填充 -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 预测图表 -->
+                                        <div class="row mt-4">
+                                            <div class="col-12">
+                                                <div class="chart-container">
+                                                    <canvas id="predictionChart"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -885,6 +942,164 @@
             fishUploadStatus.textContent = '';
             startFishUploadBtn.disabled = true;
         });
+
+        // 预测功能相关变量
+        let predictionChart = null;
+
+        // 初始化预测按钮点击事件
+        document.getElementById('predictBtn')?.addEventListener('click', function() {
+            if (currentFishData.length === 0) {
+                alert('请先加载鱼类数据');
+                return;
+            }
+            
+            const months = document.getElementById('predictionMonths').value;
+            
+            // 准备要发送的数据
+            const fishDataForPrediction = currentFishData.map(fish => ({
+                'Weight(g)': parseFloat(fish['Weight(g)']),
+                'Length1(cm)': parseFloat(fish['Length1(cm)']),
+                'Length2(cm)': parseFloat(fish['Length2(cm)']),
+                'Length3(cm)': parseFloat(fish['Length3(cm)']),
+                'Height(cm)': parseFloat(fish['Height(cm)']),
+                'Width(cm)': parseFloat(fish['Width(cm)'])
+            }));
+            
+            // 显示加载状态
+            const predictBtn = document.getElementById('predictBtn');
+            const originalText = predictBtn.innerHTML;
+            predictBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>预测中...';
+            predictBtn.disabled = true;
+            
+            // 发送预测请求
+            fetch('/api/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    fish_data: fishDataForPrediction,
+                    months: months
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 显示预测结果
+                    displayPredictionResults(data.predictions, data.prediction_date);
+                } else {
+                    alert('预测失败: ' + (data.error || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('预测请求失败:', error);
+                alert('预测请求失败');
+            })
+            .finally(() => {
+                predictBtn.innerHTML = originalText;
+                predictBtn.disabled = false;
+            });
+        });
+
+        // 显示预测结果
+        function displayPredictionResults(predictions, predictionDate) {
+            // 更新预测日期
+            document.getElementById('predictionDate').textContent = predictionDate;
+            
+            // 填充预测表格
+            const tableBody = document.getElementById('predictionTableBody');
+            tableBody.innerHTML = '';
+            
+            predictions.forEach(pred => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${pred.feature}</td>
+                    <td>${pred.current_avg.toFixed(2)}</td>
+                    <td>${pred.predicted_value.toFixed(2)}</td>
+                    <td class="${pred.growth_rate >= 0 ? 'text-success' : 'text-danger'}">
+                        ${pred.growth_rate.toFixed(2)}%
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+            
+            // 显示预测结果区域
+            document.getElementById('predictionResults').style.display = 'block';
+            
+            // 更新预测图表
+            updatePredictionChart(predictions);
+        }
+
+        // 更新预测图表
+        function updatePredictionChart(predictions) {
+            const ctx = document.getElementById('predictionChart').getContext('2d');
+            
+            // 如果已有图表，先销毁
+            if (predictionChart) {
+                predictionChart.destroy();
+            }
+            
+            // 准备图表数据
+            const labels = predictions.map(p => p.feature);
+            const currentData = predictions.map(p => p.current_avg);
+            const predictedData = predictions.map(p => p.predicted_value);
+            
+            predictionChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '当前平均值',
+                            data: currentData,
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '预测值',
+                            data: predictedData,
+                            backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '数值'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '指标'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '当前数据与预测值对比'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const index = context.dataIndex;
+                                    const growthRate = predictions[index].growth_rate;
+                                    return `增长率: ${growthRate.toFixed(2)}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
     </script>
 
 {% endblock %}
