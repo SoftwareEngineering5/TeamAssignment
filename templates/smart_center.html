@@ -84,7 +84,43 @@
             </div>
         </div>
     </div>
-    
+
+    <div class="container mt-5">
+        <h2 class="mb-4">图片识别功能</h2>
+        
+        <!-- 图片识别功能 -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-image me-2"></i>上传图片进行识别
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- 左侧图片预览 -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="image_upload" class="form-label">选择图片进行识别</label>
+                            <input type="file" id="image_upload" accept="image/*" onchange="handleImageUpload(event)" class="form-control">
+                        </div>
+
+                        <!-- 显示上传的图片 -->
+                        <div id="image_preview" class="mt-4" style="display: none;">
+                            <h5>上传的图片预览:</h5>
+                            <img id="uploaded_image" src="" alt="Uploaded Image" style="max-width: 100%; height: auto;">
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧识别结果 -->
+                    <div class="col-md-6">
+                        <div class="mt-4">
+                            <h5>识别结果:</h5>
+                            <p id="result">请上传图片进行识别。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // 监听 ENTER 键按下事件
         document.getElementById("user_input").addEventListener("keydown", function(event) {
@@ -148,6 +184,50 @@
         function setQuestion(question) {
             document.getElementById("user_input").value = question;
             sendMessage();
+        }
+
+        // 用于将图片转换为base64编码
+        function encodeImageToBase64(file) {
+            var reader = new FileReader();
+            reader.onloadend = function() {
+                var base64Image = reader.result.split(',')[1]; // 获取Base64编码部分
+                // 调用后台接口进行图片识别
+                sendImageForRecognition(base64Image);
+                
+                // 显示图片预览
+                var imagePreview = document.getElementById("image_preview");
+                var uploadedImage = document.getElementById("uploaded_image");
+                uploadedImage.src = reader.result;
+                imagePreview.style.display = "block"; // 显示图片预览区域
+            };
+            reader.readAsDataURL(file); // 将图片转为Base64
+        }
+
+        // 调用API接口进行图片识别
+        function sendImageForRecognition(base64Image) {
+            fetch('/recognize_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'image_data=' + encodeURIComponent(base64Image)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 显示识别结果
+                document.getElementById('result').innerText = "识别结果: " + data.response;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        // 图片上传处理
+        function handleImageUpload(event) {
+            var file = event.target.files[0];
+            if (file) {
+                encodeImageToBase64(file);
+            }
         }
     </script>
 {% endblock %}

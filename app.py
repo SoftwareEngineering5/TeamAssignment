@@ -14,6 +14,7 @@ from alerts import alerts_bp  # 导入报警模块的蓝图
 from water_data import water_data_bp  # 导入水质数据模块的蓝图
 from fish_data import fish_data_bp  # 导入鱼类数据模块的蓝图
 from ai_api import ai_api_bp  # 导入人工智能模块的蓝图
+from image_recognition_api import image_recognition_bp  # 导入人工智能模块的蓝图
 
 app = Flask(__name__)
 
@@ -22,6 +23,7 @@ app.register_blueprint(alerts_bp)
 app.register_blueprint(water_data_bp)
 app.register_blueprint(fish_data_bp)
 app.register_blueprint(ai_api_bp)
+app.register_blueprint(image_recognition_bp)
 
 # 每次启动都换新密钥
 app.config['SECRET_KEY'] = secrets.token_hex(16) + SERVER_BOOT_ID
